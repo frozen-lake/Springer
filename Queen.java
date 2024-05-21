@@ -1,13 +1,13 @@
+import java.util.Set;
+
 public class Queen extends Piece {
 
     public Queen(boolean color, int position){
         super(color, position);
+        this.type = "Queen";
     }
-    public Move[] getMoves(){
-        // Direct projection in one direction
-
-
-        return new Move[0];
+    public Set<Move> getMoves(Board board){
+        return null;
     }
     public String toString(){
         if(this.color){

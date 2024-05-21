@@ -1,4 +1,5 @@
 import org.junit.Test;
+
 import static org.junit.Assert.*;
 public class testBoard {
 
@@ -22,8 +23,15 @@ public class testBoard {
     public void testPopulateBoard(){
         Chess c = new Chess();
         Board b = c.board;
-        b.printBoardr();
-        b.populateBoard();
-        b.printBoard();
+        assertEquals("P", b.get(13).toString());
+        assertEquals("p", b.get(52).toString());
+    }
+
+    @Test
+    public void testPrintBoard(){
+        Chess c = new Chess();
+        Board b = c.board;
+        b.printBoardW();
+        b.printBoardB();
     }
 }

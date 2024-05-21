@@ -1,13 +1,13 @@
+import java.util.Set;
+
 public class Rook extends Piece {
 
     public Rook(boolean color, int position){
         super(color, position);
+        this.type = "Rook";
     }
-    public Move[] getMoves(){
-        // Direct projection in one direction
-
-
-        return new Move[0];
+    public Set<Move> getMoves(Board board){
+        return null;
     }
     public String toString(){
         return this.color ? "R" : "r";

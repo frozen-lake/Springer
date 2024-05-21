@@ -1,6 +1,9 @@
+import java.util.Set;
+
 public abstract class Piece {
 
     public final boolean color;
+    public String type;
     protected int position;
     protected boolean hasMoved;
 
@@ -8,11 +11,12 @@ public abstract class Piece {
         this.color = color;
         this.position = position;
         this.hasMoved = false;
+        this.type = "";
     }
 
-    public void setPosition(int p){
-        this.position = p;
-    }
-    public abstract Move[] getMoves();
+    public void setPosition(int p){ this.position = p; }
+
+    public int getPosition(){ return position; }
+    public abstract Set<Move> getMoves(Board board);
 
 }

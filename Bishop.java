@@ -1,14 +1,18 @@
+import java.util.Set;
+
 public class Bishop extends Piece {
 
     public Bishop(boolean color, int position){
         super(color, position);
+        this.type = "Bishop";
     }
-    public Move[] getMoves(){
-        // Direct projection in one direction
+
+    @Override
+    public Set<Move> getMoves(Board board) {
+        return null;
+    }
 
 
-        return new Move[0];
-    }
     public String toString(){
         return this.color ? "B" : "b";
     }
