@@ -1,2 +1,2 @@
 # Springer
-A chess engine.
+A chess framework.
