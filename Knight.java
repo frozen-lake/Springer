@@ -1,13 +1,22 @@
 
+import java.util.HashSet;
 import java.util.Set;
 public class Knight extends Piece {
 
-    public Knight(boolean color, int position){
-        super(color, position);
-        this.type = "Knight";
+    public Knight(boolean color, int position, Board board){
+        super(color, position, board, "Knight");
     }
-    public Set<Move> getMoves(Board board){
-        return null;
+    public Set<Move> getMoves(){
+        int[] around = {position - 6, position + 6, position - 10, position + 10,
+                position - 15, position + 15, position - 17, position + 17};
+        Set<Move> moves = new HashSet<Move>();
+        for(int j : around){
+            if(board.validPosition(j)){
+                moves.add(board.createMove(position, j));
+            }
+        }
+        board.filterLegalMoves(moves);
+        return moves;
     }
     public String toString(){
         return this.color ? "N" : "n";

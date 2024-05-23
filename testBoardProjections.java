@@ -26,7 +26,7 @@ public class testBoardProjections {
     public void testStraightProjection2(){
         Chess c = new Chess();
         Board b = c.board;
-        b.set(34, new Rook(true, 34));
+        b.set(34, new Rook(true, 34, b));
         int[] arr = {18, 26, 32, 33, 35, 36, 37, 38, 39, 42, 50};
         ArrayList<Integer> l = new ArrayList<Integer>();
         for(Move move: b.straightProjection(34)){
@@ -43,7 +43,7 @@ public class testBoardProjections {
     public void testDiagonalProjection1(){
         Chess c = new Chess();
         Board b = c.board;
-        b.set(34, new Bishop(true, 34));
+        b.set(34, new Bishop(true, 34,b));
 
         int[] arr = {16, 20, 25, 27, 41, 43, 48, 52};
         ArrayList<Integer> l = new ArrayList<Integer>();
