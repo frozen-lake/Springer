@@ -27,5 +27,7 @@ public abstract class Piece {
         return type.equals(p.type) && color == p.color && position == p.position;
     }
 
-
+    public int hashCode(){
+        return (color?344:-344) + (position*31) + (type.hashCode()) + 67;
+    }
 }

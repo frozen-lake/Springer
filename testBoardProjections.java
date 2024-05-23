@@ -51,7 +51,6 @@ public class testBoardProjections {
             l.add(move.to());
         }
         l.sort(Comparator.naturalOrder());
-        System.out.println(l);
         assertEquals(l.size(), arr.length);
         for(int i=0;i<l.size();i++){
             assertEquals(arr[i], (int) l.get(i));

@@ -1,4 +1,4 @@
-public record Move(Piece piece, int from, int to, boolean capture, boolean castle, String promotion){
+public record Move(Piece piece, int from, int to, Piece capture, String castle, String promotion){
 
     public boolean equals(Object o){
         if(!(o instanceof Move)) return false;
@@ -11,7 +11,7 @@ public record Move(Piece piece, int from, int to, boolean capture, boolean castl
         return piece.toString() + " | " + from + " -> " + to;
     }
     public int hashCode(){
-        return piece.hashCode() + (31*from + 32*to) + (promotion!=null?promotion.hashCode():0)
-                + (castle?617:0) + (capture?-1324:0);
+        return piece.hashCode() + (31*from + 32*to) + (promotion!=null?promotion.hashCode():-1)
+                + (castle!=null?castle.hashCode():-1) +(capture!=null?capture.hashCode():-1);
     }
 }
