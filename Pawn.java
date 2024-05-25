@@ -5,7 +5,7 @@ import java.util.HashSet;
 public class Pawn extends Piece {
 
     public static final Set<String> promotions = new HashSet<String>(List.of(new String[]{"Q", "R", "N", "B"}));
-
+    public Pawn(Pawn p, Board board){super(p, board);}
     public Pawn(boolean color, int position, Board board){
         super(color, position, board, "Pawn");
     }
@@ -16,7 +16,7 @@ public class Pawn extends Piece {
         int[] j = {forward + 1, forward - 1};
         for(int i: j){
             if(board.validPosition(i) && board.get(i) != null
-                    && board.get(i).color != color){
+                    && board.get(i).color != color && !((position%8<=1&&i%8>=6) || (position%8>=6&&i%8<=1)) ){
                 if(board.isPromotion(position, i)){
                     for(String p : promotions){moves.add(board.createMove(position, i, p));}
                 } else {
@@ -31,6 +31,7 @@ public class Pawn extends Piece {
 
             } else {
                 moves.add(board.createMove(position, forward));
+                //System.out.println(position + " | " + board.get(position) + "dogdogdog");
             }
 
             int doubleForward = color ? forward + 8 : forward - 8;

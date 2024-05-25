@@ -1,29 +1,99 @@
 import java.util.*;
 
 public class Board {
+    public static final boolean debugBoard = true;
     /*
     A board object represents a 8x8 chess board of Piece objects using a 2D ArrayList.
     Columns by rows.
 
      */
     protected ArrayList<ArrayList<Piece>> board;
-    protected final King kingW;
-    protected final King kingB;
+    protected King kingW;
+    protected King kingB;
 
-    protected final LinkedList<Move> moves;
+    protected ArrayList<Move> moves;
+    protected Set<Piece> pieces;
+    protected Set<Piece> whiteArmy;
+    protected Set<Piece> blackArmy;
+    protected boolean sideToMove;
     protected Boolean winner;
 
     public Board(){
-        winner = null;
-        moves = new LinkedList<Move>();
         board = new ArrayList<ArrayList<Piece>>(8);
-        for(int i=0;i<8;i++){ // Initialize board
+        for(int i=0;i<8;i++){
             board.add(new ArrayList<Piece>(8));
             for(int j=0;j<8;j++){board.get(i).add(null);}
         }
+        initializeBoard();
+    }
+
+    // Copies the board
+    public Board(Board b){
+        board = new ArrayList<ArrayList<Piece>>(8);
+        for(int i=0;i<8;i++){
+            board.add(new ArrayList<Piece>(8));
+            for(int j=0;j<8;j++){board.get(i).add(null);}
+        }
+
+        initializeBoard();
+
+        ArrayList<Move> ms = new ArrayList<Move>();
+        for(int i=0;i<b.moves.size();i++){
+            // Piece at corresponding original position
+            Move m = b.moves.get(i);
+            Piece p = get(m.piece().originalPosition);
+            Piece capture = m.capture() == null ? null : get(m.capture().originalPosition);
+
+            ms.add(new Move(p, m.from(), m.to(), capture, m.castle(), m.promotion()));
+        }
+        for(int i=0;i<ms.size();i++){
+            makeMove(ms.get(i));
+        }
+
+    }
+
+    private void initializeBoard(){
+        pieces = new HashSet<Piece>(); whiteArmy = new HashSet<Piece>(); blackArmy = new HashSet<Piece>();
+        moves = new ArrayList<Move>();
+        sideToMove = true;
+        winner = null;
+
         populateBoard();
         kingW = (King) get(4);
         kingB = (King) get(60);
+    }
+
+    public Set<Move> getWhiteMoves(){
+        Set<Move> s = new HashSet<Move>();
+        for(Piece p: whiteArmy){
+            s.addAll(p.getMoves());
+        }
+        return s;
+    }
+
+    public Set<Move> getBlackMoves(){
+        Set<Move> s = new HashSet<Move>();
+        for(Piece p: blackArmy){
+            s.addAll(p.getMoves());
+        }
+        return s;
+    }
+
+    public void addPiece(Piece p){
+        set(p.getPosition(), p);
+        pieces.add(p);
+        if(p.color){whiteArmy.add(p);}else{blackArmy.add(p);}
+//        if(p.type.equals("King")){
+//            if(p.color){kingW = (King) p;}
+//            else {kingB = (King) p;}
+//        }
+    }
+    public Set<Move> allMoves(){
+        Set<Move> s = new HashSet<Move>();
+        for(Piece p: pieces){
+            s.addAll(p.getMoves());
+        }
+        return s;
     }
 
     // Returns the piece at location pos, or null if there is no piece.
@@ -41,6 +111,13 @@ public class Board {
     // Filters a set of moves by removing self checks.
     public void filterLegalMoves(Set<Move> moves){
         removeSelfChecks(moves);
+        Iterator<Move> iter = moves.iterator();
+        while(iter.hasNext()){
+            Move move = iter.next();
+            if(move.capture() != null && move.capture().color == move.piece().color){
+                iter.remove();
+            }
+        }
     }
 
     // Removes all moves from the given set which place the king, of the same color as
@@ -52,14 +129,9 @@ public class Board {
             Piece oldTo = get(m.to());
 
             primitiveMove(m);
-
             if(m.piece().color && kingW.inCheck()) iter.remove();
             if(!m.piece().color && kingB.inCheck()) iter.remove();
-
-            // Undo move
-            set(m.from(), m.piece());
-            set(m.to(), oldTo);
-            m.piece().setPosition(m.from());
+            undoPrimitiveMove(m);
         }
     }
 
@@ -90,42 +162,110 @@ public class Board {
     // Executes the primitive move operations without of the decoration from makeMove.
     // Does not validate move but DOES update the piece's position property.
     protected void primitiveMove(Move m){
-        set(m.to(), m.piece());
-        set(m.from(), null);
-        m.piece().setPosition(m.to());
+        if(m.castle() != null){
+            if(m.castle().equals("K")){
+                //System.out.println("upp " + m);printBoardW();System.out.println(kingW.canCastleShort());
+                ((King) m.piece()).castleShort();
+                return;
+            } else if(m.castle().equals("Q")){
+                ((King) m.piece()).castleLong();
+                return;
+            }
+        } else {
+            set(m.to(), m.piece());
+            set(m.from(), null);
+            m.piece().setPosition(m.to());
+        }
     }
+    protected void undoPrimitiveMove(Move m){
+        if(get(m.to()) != m.piece()) throw new IllegalArgumentException();
+        set(m.to(), m.capture());
+        set(m.from(), m.piece());
+        m.piece().setPosition(m.from());
+        if(m.capture() != null) m.capture().setPosition(m.to());
 
+        // Rook
+        if(m.castle()!=null) {
+            m.piece().hasMoved = false;
+
+            if (m.castle().equals("K")) {
+                set(m.to() + 1, get(m.to() - 1));
+                set(m.to() - 1, null);
+                get(m.to() + 1).setPosition(m.to() + 1);
+                get(m.to() + 1).hasMoved = false;
+            } else if (m.castle().equals("Q")){
+                set(m.to() - 2, get(m.to() + 1));
+                set(m.to() + 1, null);
+                get(m.to() - 2).setPosition(m.to() - 2);
+                get(m.to() - 2).hasMoved = false;
+            }
+        }
+    }
+    // Records move, checks for end of game, and passes turn.
+    public void endTurn(Move m){
+        moves.add(m);
+        checkCheckmate(!m.piece().color?kingW:kingB);
+        sideToMove = !sideToMove;
+    }
 
     // Performs a legal chess move on this board. Validates,
     // Executes castling maneuvers and promotion, and updates hasMoved property.
     public void makeMove(Move m){
-        if(!validateMove(m)) throw new IllegalArgumentException();
-        if(m.castle() != null && m.castle().equals("K")){
-            ((King) m.piece()).castleShort(); moves.add(m);
-            checkCheckmate(!m.piece().color?kingW:kingB);
-            return;
-        } else if(m.castle() != null && m.castle().equals("Q")){
-            ((King) m.piece()).castleLong(); moves.add(m);
-            checkCheckmate(!m.piece().color?kingW:kingB);
-            return;
+        if(!validateMove(m)) {
+            if (debugBoard){
+                printBoardW(); // Move m not a member of m.piece().getMoves()
+                System.out.println("makeMove() call debug: Move being tried: " + m);
+                System.out.println(get(60).hasMoved + " | " + get(63).hasMoved);
+                System.out.println("Possible moves for " + m.piece() + ": " + m.piece().getMoves());
+                System.out.println("Moves: " + moves);
+            }
+            throw new IllegalArgumentException();
         }
 
         primitiveMove(m);
+
+        if(m.capture() != null) m.capture().captured();
+
         m.piece().hasMoved = true;
         if(m.promotion() != null){
             ((Pawn) m.piece()).promote(m.promotion());
         }
 
-        moves.add(m);
-        checkCheckmate(!m.piece().color?kingW:kingB);
+        endTurn(m);
+    }
+
+    // WIP Urgent: castling and promotion
+    public void undoMove(Move m){
+
+        if(kingW.inCheckmate()) winner = null;
+        if(kingB.inCheckmate()) winner = null;
+
+        undoPrimitiveMove(m);
+
+
+
+        if(m.capture() != null) {
+            addPiece(m.capture());
+        }
+
+        if((m.from() >= (m.piece().color?8:48) && m.from() <= (m.piece().color?15:55) && m.piece().type.equals("Pawn"))) m.piece().hasMoved = false;
+        if(m.piece().type.equals("King") && m.from() == (m.piece().color?4:60)) m.piece().hasMoved = false;
+        if(m.piece().type.equals("Rook") && (m.from() == (m.piece().color?0:56)) || (m.from() == (m.piece().color?7:63))) m.piece().hasMoved = false;
+
+
+        set(m.from(), m.piece()); // undo promote
+
+
+        moves.removeLast();
+        sideToMove = !sideToMove;
     }
 
     // Tests checkmate on the given king, ending the game here if so.
     public void checkCheckmate(King k){
         if(k.inCheckmate()){
             winner = k.color;
-            if(winner){printBoardW();}else{printBoardB();}
-            System.out.println("Game over! " + (!k.color?"White":"Black") + " won by checkmate.");
+//            if(winner){printBoardW();}else{printBoardB();}
+//            System.out.println("Game over! " + (!k.color?"White":"Black") + " won by checkmate.");
         } else {
 
         }
@@ -201,7 +341,13 @@ public class Board {
     // piece, capture and castle information. The given positions are assumed to be a legal move.
     // Not expected to handle pawn promotion.
     protected Move createMove(int from, int to){
-        if(get(from) == null) throw new IllegalArgumentException();
+        if(get(from) == null) {
+            if (debugBoard) {
+                printBoardW();
+                System.out.println(from + " | " + to);
+            }
+            throw new IllegalArgumentException();
+        }
         if(get(to) != null){
             return new Move(get(from), from, to, get(to), null, null);
         } else {
@@ -216,40 +362,36 @@ public class Board {
     protected Move createMove(int from, int to, String promotion){
         if(get(to) != null){
             return new Move(get(from), from, to, get(to), null, promotion);
-        } else {
-            if(get(from).type.equals("King")) {
-                // Check castling
-            }
         }
         return new Move(get(from), from, to, null, null, promotion);
     }
 
-    public Set<Move> straightProjection(int pos){
+    public Set<Move> straightProjection(int pos, boolean ignoreFriendly){
         if(!validPosition(pos)) throw new IllegalArgumentException();
         Set<Move> m = new HashSet<Move>();
         if(get(pos) == null) return m;
         
         // Go left
         for(int i=pos-1;i>=(pos / 8) * 8;i--){
-            if(!validPosition(i) || (get(i) != null && get(i).color == get(pos).color)) break;
+            if(!validPosition(i) || (ignoreFriendly && get(i) != null && get(i).color == get(pos).color)) break;
             m.add(createMove(pos, i));
             if(get(i) != null) break;
         }
         // Go right
         for(int i=pos+1;i<=((pos / 8)*8)+7;i++){
-            if(!validPosition(i) || (get(i) != null && get(i).color == get(pos).color)) break;
+            if(!validPosition(i) || (ignoreFriendly && get(i) != null && get(i).color == get(pos).color)) break;
             m.add(createMove(pos, i));
             if(get(i) != null) break;
         }
         // Go up
         for(int i=pos+8;i<=63;i+=8){
-            if(!validPosition(i) || (get(i) != null && get(i).color == get(pos).color)) break;
+            if(!validPosition(i) || (ignoreFriendly && get(i) != null && get(i).color == get(pos).color)) break;
             m.add(createMove(pos, i));
             if(get(i) != null) break;
         }
         // Go down
         for(int i=pos-8;i>=0;i-=8){
-            if(!validPosition(i) || (get(i) != null && get(i).color == get(pos).color)) break;
+            if(!validPosition(i) || (ignoreFriendly && get(i) != null && get(i).color == get(pos).color)) break;
             m.add(createMove(pos, i));
             if(get(i) != null) break;
         }
@@ -257,14 +399,15 @@ public class Board {
         return m;
     }
 
-    public Set<Move> diagonalProjection(int pos) {
+    public Set<Move> diagonalProjection(int pos, boolean ignoreFriendly) {
         if(!validPosition(pos)) throw new IllegalArgumentException();
         Set<Move> m = new HashSet<Move>();
         if (get(pos) == null) return m;
 
         // Down + left
         for(int i=pos-9;true;i-=9){
-            if(!validPosition(i) || (get(i) != null && get(i).color == get(pos).color)) break;
+            if(i%8 == 7 || (i%8)+1!=((i+9)%8)) break;
+            if(!validPosition(i) || (ignoreFriendly && get(i) != null && get(i).color == get(pos).color)) break;
             m.add(createMove(pos, i));
             if(get(i) != null) break;
             if(i % 8 == 0 || i < 0) break;
@@ -272,7 +415,8 @@ public class Board {
 
         // Down + right
         for(int i=pos-7;true;i-=7){
-            if(!validPosition(i) || (get(i) != null && get(i).color == get(pos).color)) break;
+            if(i%8 == 0 || (i%8)-1!=((i+7) %8)) break;
+            if(!validPosition(i) || (ignoreFriendly && get(i) != null && get(i).color == get(pos).color)) break;
             m.add(createMove(pos, i));
             if(get(i) != null) break;
             if(i % 8 == 7 || i < 0) break;
@@ -280,7 +424,8 @@ public class Board {
 
         // Up + left
         for(int i=pos+7;true;i+=7){
-            if(!validPosition(i) || (get(i) != null && get(i).color == get(pos).color)) break;
+            if(i%8==7 || (i%8)+1!=(i-7)%8) break;
+            if(!validPosition(i) || (ignoreFriendly && get(i) != null && get(i).color == get(pos).color)) break;
             m.add(createMove(pos, i));
             if(get(i) != null) break;
             if(i % 8 == 0 || i > 63) break;
@@ -288,7 +433,8 @@ public class Board {
 
         // Up + right
         for(int i=pos+9;true;i+=9){
-            if(!validPosition(i) || (get(i) != null && get(i).color == get(pos).color)) break;
+            if(i%8==0 || (i%8)-1!=(i-9)%8) break;
+            if(!validPosition(i) || (ignoreFriendly && get(i) != null && get(i).color == get(pos).color)) break;
             m.add(createMove(pos, i));
             if(get(i) != null) break;
             if(i % 8 == 7 || i > 63) break;
@@ -302,7 +448,7 @@ public class Board {
         for(int i=0;i<8;i++){
             set(8+i, new Pawn(true, 8+i, this));
         }
-        set(0, new Rook(true, 1, this));
+        set(0, new Rook(true, 0, this));
         set(1, new Knight(true, 1, this));
         set(2, new Bishop(true, 2, this));
         set(3, new Queen(true, 3, this));
@@ -323,5 +469,20 @@ public class Board {
         set(61, new Bishop(false, 61, this));
         set(62, new Knight(false, 62, this));
         set(63, new Rook(false, 63, this));
+    }
+
+    public Board copy(){
+        return new Board(this);
+    }
+
+    public boolean equals(Object o){
+        if(!(o instanceof Board)) return false;
+        Board b = (Board) o;
+        for(int i=0;i<=63;i++){
+            if(get(i) == null && b.get(i) == null) continue;
+            if(get(i) != null && !get(i).equals(b.get(i))) return false;
+            if(!b.get(i).equals(get(i))) return false;
+        }
+        return true;
     }
 }

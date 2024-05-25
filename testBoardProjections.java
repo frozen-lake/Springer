@@ -12,7 +12,7 @@ public class testBoardProjections {
         Board b = c.board;
         int[] arr = {17, 25, 33, 41, 49};
         ArrayList<Integer> l = new ArrayList<Integer>();
-        for(Move move: b.straightProjection(9)){
+        for(Move move: b.straightProjection(9, true)){
             l.add(move.to());
         }
         l.sort(Comparator.naturalOrder());
@@ -29,7 +29,7 @@ public class testBoardProjections {
         b.set(34, new Rook(true, 34, b));
         int[] arr = {18, 26, 32, 33, 35, 36, 37, 38, 39, 42, 50};
         ArrayList<Integer> l = new ArrayList<Integer>();
-        for(Move move: b.straightProjection(34)){
+        for(Move move: b.straightProjection(34, true)){
             l.add(move.to());
         }
         l.sort(Comparator.naturalOrder());
@@ -47,7 +47,7 @@ public class testBoardProjections {
 
         int[] arr = {16, 20, 25, 27, 41, 43, 48, 52};
         ArrayList<Integer> l = new ArrayList<Integer>();
-        for(Move move: b.diagonalProjection(34)){
+        for(Move move: b.diagonalProjection(34, true)){
             l.add(move.to());
         }
         l.sort(Comparator.naturalOrder());
@@ -55,5 +55,13 @@ public class testBoardProjections {
         for(int i=0;i<l.size();i++){
             assertEquals(arr[i], (int) l.get(i));
         }
+    }
+
+    @Test
+    public void testPieceProjection(){
+        Chess c = new Chess();
+        Board b = c.board;
+
+        assertEquals(4, b.get(12).terminalProjections(true, b.get(12).position));
     }
 }

@@ -87,7 +87,6 @@ public class testChess {
             assertNotNull(b.winner);
             assertEquals(true, b.winner);
         }
-
         System.setIn(System.in);
     }
 }

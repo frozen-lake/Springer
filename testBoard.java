@@ -34,4 +34,11 @@ public class testBoard {
         b.printBoardW();
         b.printBoardB();
     }
+
+    @Test
+    public void testBoardCopyConstructor(){
+        Chess c = new Chess();
+        Board b = c.board;
+        // WIP
+    }
 }

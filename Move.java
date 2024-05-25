@@ -1,5 +1,4 @@
 public record Move(Piece piece, int from, int to, Piece capture, String castle, String promotion){
-
     public boolean equals(Object o){
         if(!(o instanceof Move)) return false;
         Move m = (Move) o;
