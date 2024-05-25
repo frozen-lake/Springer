@@ -98,7 +98,13 @@ public class Board {
 
     // Returns the piece at location pos, or null if there is no piece.
     public Piece get(int pos){
-        if(!validPosition(pos)) throw new IllegalArgumentException();
+        if(!validPosition(pos)) {
+            if(debugBoard){
+                System.out.println("===get(int pos) DEBUG===\n");
+                printBoardW();
+            }
+            throw new IllegalArgumentException();
+        }
         return board.get(pos % 8).get(pos / 8);
     }
 
@@ -164,17 +170,21 @@ public class Board {
     protected void primitiveMove(Move m){
         if(m.castle() != null){
             if(m.castle().equals("K")){
-                //System.out.println("upp " + m);printBoardW();System.out.println(kingW.canCastleShort());
                 ((King) m.piece()).castleShort();
+                if(m.isFirstMove()) m.piece().hasMoved = true;
+                get(m.to() - 1).hasMoved = true;
                 return;
             } else if(m.castle().equals("Q")){
                 ((King) m.piece()).castleLong();
+                if(m.isFirstMove()) m.piece().hasMoved = true;
+                get(m.to() + 1).hasMoved = true;
                 return;
             }
         } else {
             set(m.to(), m.piece());
             set(m.from(), null);
             m.piece().setPosition(m.to());
+            if(m.isFirstMove()) m.piece().hasMoved = true;
         }
     }
     protected void undoPrimitiveMove(Move m){
@@ -183,10 +193,10 @@ public class Board {
         set(m.from(), m.piece());
         m.piece().setPosition(m.from());
         if(m.capture() != null) m.capture().setPosition(m.to());
+        if(m.isFirstMove()) m.piece().hasMoved = false;
 
         // Rook
         if(m.castle()!=null) {
-            m.piece().hasMoved = false;
 
             if (m.castle().equals("K")) {
                 set(m.to() + 1, get(m.to() - 1));
@@ -215,7 +225,8 @@ public class Board {
             if (debugBoard){
                 printBoardW(); // Move m not a member of m.piece().getMoves()
                 System.out.println("makeMove() call debug: Move being tried: " + m);
-                System.out.println(get(60).hasMoved + " | " + get(63).hasMoved);
+                System.out.println(get(4).hasMoved + " | " + get(7).hasMoved);
+                System.out.println(((King) get(4)).canCastleShort() + " | " + get(7));
                 System.out.println("Possible moves for " + m.piece() + ": " + m.piece().getMoves());
                 System.out.println("Moves: " + moves);
             }
@@ -226,7 +237,6 @@ public class Board {
 
         if(m.capture() != null) m.capture().captured();
 
-        m.piece().hasMoved = true;
         if(m.promotion() != null){
             ((Pawn) m.piece()).promote(m.promotion());
         }
@@ -248,9 +258,9 @@ public class Board {
             addPiece(m.capture());
         }
 
-        if((m.from() >= (m.piece().color?8:48) && m.from() <= (m.piece().color?15:55) && m.piece().type.equals("Pawn"))) m.piece().hasMoved = false;
-        if(m.piece().type.equals("King") && m.from() == (m.piece().color?4:60)) m.piece().hasMoved = false;
-        if(m.piece().type.equals("Rook") && (m.from() == (m.piece().color?0:56)) || (m.from() == (m.piece().color?7:63))) m.piece().hasMoved = false;
+        //if((m.from() >= (m.piece().color?8:48) && m.from() <= (m.piece().color?15:55) && m.piece().type.equals("Pawn"))) m.piece().hasMoved = false;
+        //if(m.piece().type.equals("King") && m.from() == (m.piece().color?4:60)) m.piece().hasMoved = false;
+        //if(m.piece().type.equals("Rook") && (m.from() == (m.piece().color?0:56)) || (m.from() == (m.piece().color?7:63))) m.piece().hasMoved = false;
 
 
         set(m.from(), m.piece()); // undo promote

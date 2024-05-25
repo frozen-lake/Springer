@@ -36,18 +36,21 @@ public class King extends Piece {
     // Returns true if the King is legally able to castle short.
     public boolean canCastleShort(){
         // Legal piece arrangement for short castling, clear line and unmoved king and rook
-        if(hasMoved) return false;
+        if(hasMoved) return false; //  || position != (color?4:60)
         if(board.get(position+1) != null || board.get(position+2) != null || board.get(position+3) == null) return false;
         if(!board.get(position+3).type.equals("Rook") || board.get(position+3).hasMoved) return false;
         // Can't castle through check
         boolean checked;
-        board.primitiveMove(new Move(this, position, position+1, null, null, null));
+        Move m1 = new Move(this, position, position+1, null, null, null);
+        Move m2 = new  Move(this, position+1, position+2, null, null, null);
+        board.primitiveMove(m1);
         checked = inCheck();
-        board.primitiveMove(new Move(this, position, position+1, null, null, null));
+        board.primitiveMove(m2);
         checked = checked || inCheck();
 
         // Return the king
-        board.primitiveMove(new Move(this, position, position-2, null, null, null));
+        board.undoPrimitiveMove(m2);
+        board.undoPrimitiveMove(m1);
 
         return !checked;
     }
@@ -59,12 +62,10 @@ public class King extends Piece {
         board.set(position + 2, this); // Move king
         board.set(position, null);
         setPosition(position + 2);
-        hasMoved = true;
 
         board.set(position - 1, board.get(position + 1)); // Move rook
         board.set(position+1, null);
         board.get(position - 1).setPosition(position - 1);
-        board.get(position - 1).hasMoved = true;
 
     }
 
@@ -75,14 +76,19 @@ public class King extends Piece {
         if(!board.get(position-4).type.equals("Rook") || board.get(position-4).hasMoved) return false;
         // Can't castle through check
         boolean checked;
-        board.primitiveMove(new Move(this, position, position-1, null, null, null));
+        Move m1 = new Move(this, position, position-1, null, null, null);
+        Move m2 = new Move(this, position-1, position-2, null, null, null);
+        Move m3 = new Move(this, position-2, position-3, null, null, null);
+        board.primitiveMove(m1);
         checked = inCheck();
-        board.primitiveMove(new Move(this, position, position-1, null, null, null));
+        board.primitiveMove(m2);
         checked = checked || inCheck();
-        board.primitiveMove(new Move(this, position, position-1, null, null, null));
+        board.primitiveMove(m3);
         checked = checked || inCheck();
         // Return the king
-        board.primitiveMove(new Move(this, position, position+3, null, null, null));
+        board.undoPrimitiveMove(m3);
+        board.undoPrimitiveMove(m2);
+        board.undoPrimitiveMove(m1);
 
         return !checked;
     }
@@ -92,12 +98,10 @@ public class King extends Piece {
         board.set(position - 2, this); // Move king
         board.set(position, null);
         setPosition(position - 2);
-        hasMoved = true;
 
         board.set(position + 1, board.get(position - 2)); // Move rook
         board.set(position-2, null);
         board.get(position + 1).setPosition(position + 1);
-        board.get(position + 1).hasMoved = true;
     }
 
     public String toString(){

@@ -97,7 +97,8 @@ public class SpringerAI {
         // - Weight the bonus by the quality of the square
 
 
-
+        Set<Move> m = analysisBoard.getWhiteMoves();
+        Set<Move> m2 = analysisBoard.getBlackMoves();
 
 
         return eval;
