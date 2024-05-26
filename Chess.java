@@ -148,6 +148,7 @@ public class Chess {
                     continue;
                 }
             } else {
+                System.out.println("AI thinking...");
                 sp.takeTurn();
             }
         }

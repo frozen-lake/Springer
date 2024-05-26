@@ -479,6 +479,11 @@ public class Board {
         set(61, new Bishop(false, 61, this));
         set(62, new Knight(false, 62, this));
         set(63, new Rook(false, 63, this));
+
+        ((Rook) get(63)).otherRook = (Rook) get(56);
+        ((Rook) get(56)).otherRook = (Rook) get(63);
+        ((Rook) get(0)).otherRook = (Rook) get(7);
+        ((Rook) get(7)).otherRook = (Rook) get(0);
     }
 
     public Board copy(){

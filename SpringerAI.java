@@ -5,71 +5,101 @@ public class SpringerAI {
     public static final int depth = 3;
     public Board analysisBoard; // Analysis board
     public final Board gameBoard;
+    public boolean colorPlaying; // Side the AI is playing for
     public SpringerAI(Board board)    {
         this.gameBoard = board;
         this.analysisBoard = new Board(board);
+        this.colorPlaying = false;
     }
     public void takeTurn(){
         analysisBoard = new Board(gameBoard);
         Set<Move> s = analysisBoard.sideToMove ? analysisBoard.getWhiteMoves() : analysisBoard.getBlackMoves();
+        SearchNode bestNode = null;
         Move bestMove = null;
         int eval = 0;
 
         for(Move move : s){
             analysisBoard.makeMove(move);
-            int n = negaMax(depth);
-            if(bestMove == null || n > eval){ bestMove = move; eval = n;}
+            SearchNode node = negaMax(depth, move);
+            int n = node.score;
+            if(bestMove == null || (colorPlaying?n > eval: n < eval)){ bestMove = move; bestNode = node; eval = n;}
 
             analysisBoard.undoMove(move);
+
+            if(move.to() == 36)System.out.println("e5 node: " + node);
         }
-        gameBoard.makeMove(bestMove);
-        System.out.println("Chosen move: " + bestMove);
+        gameBoard.makeMove(gameBoard.createMove(bestMove.from(), bestMove.to()));
+        System.out.println("Chosen move: " + bestMove + ", score " + eval + ", new eval " + evaluate());
+        System.out.println("bestNode: " + bestNode);
     }
 
     private Set<Move> moves(){
         return analysisBoard.sideToMove ? analysisBoard.getWhiteMoves() : analysisBoard.getBlackMoves();
     }
 
-    private int negaMax(int depth){
+    private SearchNode negaMax(int depth, Move m){
+
         if(depth==0){
             //System.out.println("Evaluating... score=" + evaluate() + " | " + analysisBoard.blackArmy.size());
-            return evaluate();
+            return new SearchNode(evaluate(), m);
         }
-        int max = 0;
+        SearchNode current = new SearchNode(m);
+
+        Integer max = null;
+        SearchNode maxNode = null;
         for(Move move: moves()){
+
             analysisBoard.makeMove(move);
-            int score = negaMax(depth - 1);
+            SearchNode node = negaMax(depth - 1, move);
+
+            if(node != null) {
+                int score = node.score;
+                if (max == null || score > max) {
+                    max = score;
+                    maxNode = node;
+                }
+                current.addChild(node);
+            }
             analysisBoard.undoMove(move);
-            // System.out.println("Depth " + depth + ", move " + move + ", score " + score + " complete.");
-            if(score > max){
-                max = score;
-            }
+            //System.out.println("Depth " + depth + ", move " + move + ", score " + score + " complete.");
         }
-        return max;
+        if(maxNode == null) return null;
+        current.score = max;
+        current.next = maxNode;
+        //System.out.println("=== === === depth " + depth + " best move " + m);
+        return current;
     }
-    public int materialBalance(){
-        int eval = 0;
-        for(Piece p: analysisBoard.pieces){
-            int k = (p.color)?1:-1;
-            switch (p.type) {
-                case "Pawn" -> eval += k * 100;
-                case "Rook" -> eval += k * 500;
-                case "Queen" -> eval += k * 1000;
-                case "Knight" -> eval += k * 295;
-                case "Bishop" -> eval += k * 310;
-            }
-        }
-        return eval;
-    }
+//    private int negaMax(int depth){
+//        if(depth==0){
+//            //System.out.println("Evaluating... score=" + evaluate() + " | " + analysisBoard.blackArmy.size());
+//            return evaluate();
+//        }
+//        Integer max = null;
+//        Move m = null;
+//        for(Move move: moves()){
+//            analysisBoard.makeMove(move);
+//            int score = -negaMax(depth - 1);
+//            if(max == null) {max = score; m = move;}
+//            analysisBoard.undoMove(move);
+//            System.out.println("Depth " + depth + ", move " + move + ", score " + score + " complete.");
+//            if(score > max){
+//                max = score;
+//
+//            }
+//        }
+//        System.out.println("=== === === depth " + depth + " best move " + m);
+//        return max;
+//    }
 
 
     // Returns centipawn evaluation of the current analysisBoard state from the perspective
     // of the side who just made a move, so the opponent has the next move.
     public int evaluate(){
+        boolean scoringFor = !analysisBoard.sideToMove;
+        int scoreMultiplier = !analysisBoard.sideToMove?1:-1;
         int eval = 0;
 
         // Piece value
-        eval += analysisBoard.sideToMove?materialBalance():-materialBalance();
 
         // King safety
         // - Enemy pieces around a King create an "attack"
@@ -96,9 +126,59 @@ public class SpringerAI {
         // - Score mobility piece by piece
         // - Weight the bonus by the quality of the square
 
+        for(Piece p : analysisBoard.pieces){
+            //if(analysisBoard.pieces.size() != 32) System.out.println("BEEEP BEEEP BEEP\nWARNING===\n=======\n=== === ===\n");
+            int pieceMultiplier = p.color != analysisBoard.sideToMove ? 1 : -1;
+            Set<Move> moves = p.getMoves();
+            switch(p.type){
+                case "Pawn":
+                    eval += 100 * pieceMultiplier; // Piece value
 
-        Set<Move> m = analysisBoard.getWhiteMoves();
-        Set<Move> m2 = analysisBoard.getBlackMoves();
+                    // Center pawn bonus
+                    if(p.position % 8 > 2 && p.position % 8 < 5 && p.position / 8 > 2 && p.position / 8 < 5){
+                        eval += 33 * pieceMultiplier;
+                    }
+                    break;
+                case "Knight":
+                    eval += 295 * pieceMultiplier; // Piece value
+                    break;
+                case "Bishop":
+                    eval += 305 * pieceMultiplier; // Piece value
+                    break;
+                case "Rook":
+                    eval += 495 * pieceMultiplier; // Piece value
+
+                    if(((Rook) p).connected()){
+
+                    } else if(((Rook) p).orthogonalNoKing()){
+                        eval += 18 * pieceMultiplier;
+                    }
+                    break;
+                case "Queen":
+                    eval += 900 * pieceMultiplier; // Piece value
+                    break;
+                case "King":
+                    King k = (King) p;
+
+                    // Subtract points for King above home rank
+                    if(analysisBoard.moves.size() < 10 && p.color?(k.position/8!=0):(k.position/8!=7)) {
+                        eval -= 40 * pieceMultiplier;
+                    }
+
+                    if(((King) p).canCastleShort() || ((King) p).canCastleLong()){
+                        eval += 12 * pieceMultiplier;
+                    }
+                    break;
+
+            }
+            // Move count mobility bonus
+            eval += moves.size()*pieceMultiplier;
+            //if(eval < -700 || eval > 700) System.out.println("Rare event");analysisBoard.printBoardW();
+        }
+
+
+        //Set<Move> m = analysisBoard.getWhiteMoves();
+        //Set<Move> m2 = analysisBoard.getBlackMoves();
 
 
         return eval;
