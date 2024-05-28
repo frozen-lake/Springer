@@ -27,11 +27,13 @@ public class Move{
         if(!(o instanceof Move)) return false;
         Move m = (Move) o;
         return m.piece().equals(piece)
-                && m.from() == from && m.to() == to && m.capture() == capture && m.castle() == castle
+                && m.from() == from() && m.to() == to()
+                && ((m.capture()!=null && m.capture().equals(capture())) || (capture()==null&&m.capture()==null))
+                && ((m.castle() != null && m.castle().equals(castle())) || (m.castle()==null&&castle()==null))
                 && ((promotion==null&&m.promotion()==null) || (promotion != null && promotion.equals(m.promotion())));
     }
     public String toString(){
-        return piece.toString() + " | " + from + " -> " + to;
+        return piece.toString() + (capture!=null?"x"+capture:"") + (promotion!=null?"->"+promotion:"") + " | " + from + " -> " + to;
     }
     public int hashCode(){
         return piece.hashCode() + (31*from + 32*to) + (promotion!=null?promotion.hashCode():-1)

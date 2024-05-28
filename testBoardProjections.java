@@ -61,7 +61,7 @@ public class testBoardProjections {
     public void testPieceProjection(){
         Chess c = new Chess();
         Board b = c.board;
-
+        b.printBoardW();System.out.println(b.get(12).terminalProjectors(true, 12));
         assertEquals(4, b.get(12).terminalProjections(true, b.get(12).position));
     }
 }

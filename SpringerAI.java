@@ -2,34 +2,60 @@ import java.util.*;
 
 public class SpringerAI {
 
-    public static final int depth = 3;
+    // Springer chess engine.
+
+
+    public static final int depth = 2; // Default search depth
+    public static final int depthSpecial=3;
     public Board analysisBoard; // Analysis board
-    public final Board gameBoard;
+    public final Board gameBoard; // Real board
     public boolean colorPlaying; // Side the AI is playing for
+
+    public final Map<String, Integer> pieceValues;
     public SpringerAI(Board board)    {
+        this.pieceValues = new HashMap<String, Integer>();
+        pieceValues.put("Pawn", 100);
+        pieceValues.put("Knight", 295);
+        pieceValues.put("Bishop", 305);
+        pieceValues.put("Rook", 495);
+        pieceValues.put("Queen", 900);
+        pieceValues.put("King", 9999);
+
         this.gameBoard = board;
         this.analysisBoard = new Board(board);
         this.colorPlaying = false;
     }
+
+    // takeTurn(): Creates an analysis board of the current board state. There it searches for the best move,
+    // which it then executes on the game board.
     public void takeTurn(){
         analysisBoard = new Board(gameBoard);
         Set<Move> s = analysisBoard.sideToMove ? analysisBoard.getWhiteMoves() : analysisBoard.getBlackMoves();
         SearchNode bestNode = null;
         Move bestMove = null;
-        int eval = 0;
+        Integer bestEval = null; // search eval of best move
 
         for(Move move : s){
             analysisBoard.makeMove(move);
-            SearchNode node = negaMax(depth, move);
+            SearchNode node = minimax(depth, move, false);
             int n = node.score;
-            if(bestMove == null || (colorPlaying?n > eval: n < eval)){ bestMove = move; bestNode = node; eval = n;}
-
             analysisBoard.undoMove(move);
+            if(bestMove == null || (n < bestEval)){
+                bestMove = move; bestNode = node; bestEval = n;
+            }
 
-            if(move.to() == 36)System.out.println("e5 node: " + node);
+            //if(move.to() == 36)System.out.println("e5 node: " + node);
+            if(move.piece().type.equals("Queen") && move.to() == 35 && move.capture() != null) System.out.println("d1 d5 qxP node children: " + node.children);
         }
-        gameBoard.makeMove(gameBoard.createMove(bestMove.from(), bestMove.to()));
-        System.out.println("Chosen move: " + bestMove + ", score " + eval + ", new eval " + evaluate());
+        if(bestMove == null) throw new IllegalStateException();
+        Move move;
+        if(bestMove.promotion()==null){
+            move = gameBoard.createMove(bestMove.from(), bestMove.to());
+        } else {move = gameBoard.createMove(bestMove.from(), bestMove.to(), bestMove.promotion());}
+        gameBoard.makeMove(move);
+
+
+        System.out.println("Chosen move: " + move + ", score " + bestEval + ", new eval state " + evaluate(bestMove, false));
         System.out.println("bestNode: " + bestNode);
     }
 
@@ -37,20 +63,47 @@ public class SpringerAI {
         return analysisBoard.sideToMove ? analysisBoard.getWhiteMoves() : analysisBoard.getBlackMoves();
     }
 
-    private SearchNode negaMax(int depth, Move m){
 
+    private SearchNode minimax(int depth, Move m, boolean special){
+        return minimaxMoveset(depth, m, special, special?getActiveMoves():moves());
+    }
+    private SearchNode minimaxActiveMoves(int depth, Move m, boolean special){
+        return minimaxMoveset(depth, m, special, getActiveMoves());
+    }
+
+    private SearchNode minimaxMove(int depth, Move m, boolean special){
+        return null;
+    }
+
+    private SearchNode minimaxMoveset(int depth, Move m, boolean special, Set<Move> moveSet){
         if(depth==0){
             //System.out.println("Evaluating... score=" + evaluate() + " | " + analysisBoard.blackArmy.size());
-            return new SearchNode(evaluate(), m);
+
+            // Special base case: Their king is in check, or
+            if(!special && (analysisBoard.kingW.inCheck() || analysisBoard.kingB.inCheck())){
+                return minimaxActiveMoves(depthSpecial-1, m, true);
+            } else if(!special){ // 1 or more enemy threats
+
+            }
+
+            // Standard base case
+            return new SearchNode(-evaluate(m, special), m);
+        };
+
+        // If we are in an active move search and there are none, reset to depth 2 normal move search.
+        if(special && moveSet.size() == 0) {
+            moveSet = moves();
+            if(depth > 2) depth = 2;
         }
+
         SearchNode current = new SearchNode(m);
 
         Integer max = null;
         SearchNode maxNode = null;
-        for(Move move: moves()){
+        for(Move move: moveSet){
 
             analysisBoard.makeMove(move);
-            SearchNode node = negaMax(depth - 1, move);
+            SearchNode node = minimax(depth - 1, move, special);
 
             if(node != null) {
                 int score = node.score;
@@ -63,41 +116,35 @@ public class SpringerAI {
             analysisBoard.undoMove(move);
             //System.out.println("Depth " + depth + ", move " + move + ", score " + score + " complete.");
         }
-        if(maxNode == null) return null;
+        if(maxNode == null) {
+            current.score = Integer.MIN_VALUE;
+            current.eval = Integer.MIN_VALUE;
+            return current;
+        }//return null;
         current.score = max;
+        current.eval = evaluate(m, special) * (analysisBoard.sideToMove == colorPlaying ? 1 : -1);
         current.next = maxNode;
         //System.out.println("=== === === depth " + depth + " best move " + m);
         return current;
     }
-//    private int negaMax(int depth){
-//        if(depth==0){
-//            //System.out.println("Evaluating... score=" + evaluate() + " | " + analysisBoard.blackArmy.size());
-//            return evaluate();
-//        }
-//        Integer max = null;
-//        Move m = null;
-//        for(Move move: moves()){
-//            analysisBoard.makeMove(move);
-//            int score = -negaMax(depth - 1);
-//            if(max == null) {max = score; m = move;}
-//            analysisBoard.undoMove(move);
-//            System.out.println("Depth " + depth + ", move " + move + ", score " + score + " complete.");
-//            if(score > max){
-//                max = score;
-//
-//            }
-//        }
-//        System.out.println("=== === === depth " + depth + " best move " + m);
-//        return max;
-//    }
 
+    public Set<Move> getActiveMoves(){
+        Map<String, Set<Move>> map = sortMoves(moves());
+        Set<Move> moves = map.get("Checks"); moves.addAll(map.get("Captures")); moves.addAll(map.get("Threats"));
+        return moves;
+    }
 
     // Returns centipawn evaluation of the current analysisBoard state from the perspective
     // of the side who just made a move, so the opponent has the next move.
-    public int evaluate(){
+    public int evaluate(Move m, boolean special){
+
         boolean scoringFor = !analysisBoard.sideToMove;
         int scoreMultiplier = !analysisBoard.sideToMove?1:-1;
         int eval = 0;
+        int friendlyThreats = 0;
+        int enemyThreats = 0;
+
+
 
         // Piece value
 
@@ -126,27 +173,32 @@ public class SpringerAI {
         // - Score mobility piece by piece
         // - Weight the bonus by the quality of the square
 
-        for(Piece p : analysisBoard.pieces){
-            //if(analysisBoard.pieces.size() != 32) System.out.println("BEEEP BEEEP BEEP\nWARNING===\n=======\n=== === ===\n");
+        for(Piece p : analysisBoard.pieces()){
             int pieceMultiplier = p.color != analysisBoard.sideToMove ? 1 : -1;
             Set<Move> moves = p.getMoves();
+            int pieceValue = pieceValues.get(p.type);
             switch(p.type){
                 case "Pawn":
-                    eval += 100 * pieceMultiplier; // Piece value
-
                     // Center pawn bonus
                     if(p.position % 8 > 2 && p.position % 8 < 5 && p.position / 8 > 2 && p.position / 8 < 5){
                         eval += 33 * pieceMultiplier;
                     }
+                    // Threats
+                    if(p.protectedByPawn() || p.defended()) { // Stable pawn
+                        for(Move move: p.getMoves()){
+                            if(move.capture() != null && !move.capture().type.equals("Pawn")){
+                                eval += 33 * pieceMultiplier;
+                                if(scoringFor == p.color) { friendlyThreats += 1; }
+                                else { enemyThreats += 1; }
+                            }
+                        }
+                    }
                     break;
                 case "Knight":
-                    eval += 295 * pieceMultiplier; // Piece value
                     break;
                 case "Bishop":
-                    eval += 305 * pieceMultiplier; // Piece value
                     break;
                 case "Rook":
-                    eval += 495 * pieceMultiplier; // Piece value
 
                     if(((Rook) p).connected()){
 
@@ -155,7 +207,6 @@ public class SpringerAI {
                     }
                     break;
                 case "Queen":
-                    eval += 900 * pieceMultiplier; // Piece value
                     break;
                 case "King":
                     King k = (King) p;
@@ -171,18 +222,44 @@ public class SpringerAI {
                     break;
 
             }
+            // If friendly piece is threatened by pawn, evaluate up to special depth and return that.
+
             // Move count mobility bonus
             eval += moves.size()*pieceMultiplier;
-            //if(eval < -700 || eval > 700) System.out.println("Rare event");analysisBoard.printBoardW();
+            eval += pieceValue*pieceMultiplier;
         }
 
 
-        //Set<Move> m = analysisBoard.getWhiteMoves();
-        //Set<Move> m2 = analysisBoard.getBlackMoves();
+        switch(enemyThreats){
+            case 0:
+                break;
+            case 1:
+                eval *= 1.05;
+                break;
+            case 2:
+                eval *= 1.10;
+                break;
+            default:
+                eval *= 1.15;
 
+        }
+        switch(friendlyThreats){
+            case 0:
+                break;
+            case 1:
+                eval *= 1.00;
+                break;
+            case 2:
+                eval *= 1.033;
+                break;
+            default:
+                eval *= 1.066;
+
+        }
 
         return eval;
     }
+
 
     // Filters a set of moves into a map divided by checks, captures, and threats.
     public Map<String, Set<Move>> sortMoves(Set<Move> s){
@@ -212,24 +289,26 @@ public class SpringerAI {
 
             // Threats
             Set<Piece> projectors = m.piece().terminalProjectors(false, m.to());
+            boolean flag = false;
             for(Piece p: projectors){
+                if(flag) break;
                 // N, B or P threatens Q or R
                 if((p.type.equals("Queen") || p.type.equals("Rook"))
                         && (m.piece().type.equals("Knight") || m.piece().type.equals("Bishop") || m.piece().type.equals("Pawn"))){
                     map.get("Threats").add(m);
                     analysisBoard.undoPrimitiveMove(m);
-                    continue;
+                    flag = true; continue;
                 }
 
                 // P threatens to promote
-                if(m.promotion().equals("Q") || m.promotion().equals("N")){
+                if(m.promotion()!=null&& (m.promotion().equals("Q") || m.promotion().equals("N"))){
                     map.get("Threats").add(m);
                     analysisBoard.undoPrimitiveMove(m);
-                    continue;
+                    flag = true; continue;
                 }
             }
 
-            analysisBoard.undoPrimitiveMove(m);
+            if(!flag) analysisBoard.undoPrimitiveMove(m);
         }
         return map;
     }

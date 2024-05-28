@@ -37,11 +37,37 @@ public abstract class Piece {
     public abstract Set<Move> getMoves();
 
     public void captured(){
-        board.pieces.removeIf(this::equals);
-        board.whiteArmy.removeIf(this::equals);
-        board.blackArmy.removeIf(this::equals);
+//        board.pieces.removeIf(this::equals);
+//        board.whiteArmy.removeIf(this::equals);
+//        board.blackArmy.removeIf(this::equals);
     }
 
+    public int pawnProjections(Set<Piece> friendlyProjectors){
+        int n = 0;
+        for(Piece p: friendlyProjectors){
+            if(p.type.equals("Pawn")) n++;
+        }
+        return n;
+    }
+    public boolean protectedByPawn(){
+        // White
+        if(color) return position/8>0 && (
+                (board.validPosition(position-7)&&board.get(position-7)!=null&&board.get(position-7).type.equals("Pawn")&&board.get(position-7).color)
+                || (board.validPosition(position-9)&&board.get(position-9)!=null&&board.get(position-9).type.equals("Pawn")&&board.get(position-9).color)
+        );
+        // Black
+        return position/8<7 && (
+                (board.validPosition(position+7)&&board.get(position+7)!=null&&board.get(position+7).type.equals("Pawn")&&!board.get(position+7).color)
+                        || (board.validPosition(position+9)&&board.get(position+9)!=null&&board.get(position+9).type.equals("Pawn")&&!board.get(position+9).color)
+        );
+    }
+
+    public boolean defended(){
+        return terminalProjections(true, position) - terminalProjections(false, position) >= 0;
+    }
+    public int defense(){
+        return terminalProjections(true, position);
+    }
     public int terminalProjections(boolean friendly, int pos){
         return terminalProjectors(friendly, pos).size();
     }
@@ -52,25 +78,27 @@ public abstract class Piece {
         // Check relevant pawn diagonals, bishops and queens on diagonals, rooks and queen on horizontals,
         // enemy king on all surrounding squares, and all 8 knight squares.
 
-        Set<Move> straightProjections = board.straightProjection(pos, false);
-        Set<Move> diagonalProjections = board.diagonalProjection(pos, false);
-
-        // Rooks, queens, bishops
-        for(Move proj: straightProjections){
-            if(board.get(proj.to()) != null && board.get(proj.to()).color == (friendly == color)){
-                if(board.get(proj.to()).type.equals("Rook")||board.get(proj.to()).type.equals("Queen")){
-                    projectors.add(board.get(proj.to()));
-                }
+//        Set<Move> straightProjections = board.straightProjection(pos, false);
+//        Set<Move> diagonalProjections = board.diagonalProjection(pos, false);
+        Projection p = new Projection(position, !friendly, board);
+        p.projectDiagonal();
+        Iterator<ProjectionNode> iter = p.iterator();
+        while(iter.hasNext()){
+            ProjectionNode node = iter.next();
+            if(node.dest != null && node.dest.color == (friendly == color) && (node.dest.type.equals("Bishop")||node.dest.type.equals("Queen"))){
+                projectors.add(node.dest);
+            }
+        }
+        //
+        p.clear(); p.projectStraight();
+        iter = p.iterator();
+        while(iter.hasNext()){
+            ProjectionNode node = iter.next();
+            if(node.dest != null && node.dest.color == (friendly == color) && (node.dest.type.equals("Rook")||node.dest.type.equals("Queen"))){
+                projectors.add(node.dest);
             }
         }
 
-        for(Move proj: diagonalProjections){
-            if(board.get(proj.to()) != null && board.get(proj.to()).color == (friendly == color)){
-                if(board.get(proj.to()).type.equals("Bishop")||board.get(proj.to()).type.equals("Queen")){
-                    projectors.add(board.get(proj.to()));
-                }
-            }
-        }
 
         // King
         int[] around = {pos - 1, pos + 1, pos - 7, pos + 7,
@@ -107,10 +135,14 @@ public abstract class Piece {
     public boolean equals(Object o){
         if(!(o instanceof Piece)) return false;
         Piece p = (Piece) o;
-        return type.equals(p.type) && color == p.color && position == p.position;
+        return type.equals(p.type) && color == p.color && position == p.position && board == p.board;
     }
 
     public int hashCode(){
         return (color?344:-344) + (position*31) + (type.hashCode()) + 67;
+    }
+
+    public String toStringDebug(){
+        return "{type: " + this.type + ", color: " + color + ", position: " + position + ", origin: " + originalPosition + " }";
     }
 }

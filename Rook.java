@@ -10,7 +10,9 @@ public class Rook extends Piece {
     public Rook(Rook p, Board board){super(p, board);}
 
     public Set<Move> getMoves(){
-        Set<Move> moves = board.straightProjection(position, true);
+        Projection p = new Projection(position, true, board);
+        p.projectStraight();
+        Set<Move> moves = p.moves();
         board.filterLegalMoves(moves);
         return moves;
     }
@@ -18,6 +20,7 @@ public class Rook extends Piece {
     // Returns true if there is a horizontal or vertical line from this rook to the other with no king between.
 
     public boolean orthogonalNoKing(){
+        if(otherRook == null) return false;
         King k = color?board.kingW:board.kingB;
         if(position/8 == otherRook.position/8){
             if(k.position/8 == position/8){
@@ -37,6 +40,7 @@ public class Rook extends Piece {
     }
 
     public boolean orthogonal(){
+        if(otherRook == null) return false;
         return position/8 != otherRook.position/8 && position%8 != otherRook.position%8;
 
     }

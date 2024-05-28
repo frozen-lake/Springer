@@ -8,7 +8,9 @@ public class Bishop extends Piece {
     public Bishop(Bishop p, Board board){super(p, board);}
     @Override
     public Set<Move> getMoves() {
-        Set<Move> moves = board.diagonalProjection(position, true);
+        Projection p = new Projection(position, true, board);
+        p.projectDiagonal();
+        Set<Move> moves = p.moves();
         board.filterLegalMoves(moves);
         return moves;
     }

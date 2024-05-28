@@ -7,8 +7,9 @@ public class Queen extends Piece {
     }
     public Queen(Queen p, Board board){super(p, board);}
     public Set<Move> getMoves(){
-        Set<Move> moves = board.diagonalProjection(position, true);
-        moves.addAll(board.straightProjection(position, true));
+        Projection p = new Projection(position, true, board);
+        p.projectDiagonal(); p.projectStraight();
+        Set<Move> moves = p.moves();
 
         board.filterLegalMoves(moves);
         return moves;

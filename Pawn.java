@@ -36,12 +36,7 @@ public class Pawn extends Piece {
 
             int doubleForward = color ? forward + 8 : forward - 8;
             if(!hasMoved && board.validPosition(doubleForward) && board.get(doubleForward)==null){
-                if(board.isPromotion(position, doubleForward)) {
-                    for(String p : promotions){moves.add(board.createMove(position, doubleForward, p));}
-
-                } else {
-                    moves.add(board.createMove(position, doubleForward));
-                }
+                moves.add(board.createMove(position, doubleForward));
             }
         }
 

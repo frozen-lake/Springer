@@ -22,7 +22,7 @@ public class Chess {
 
         while(board.winner == null){
             printBoard();
-            System.out.println("Springer eval: "+sp.evaluate());
+            System.out.println("Springer eval: "+sp.evaluate(null, false));
             if (board.sideToMove && board.kingW.inCheck()) text = "Check! " + text;
             System.out.print(text);
             s = in.nextLine();
@@ -154,7 +154,7 @@ public class Chess {
         }
     }
     public void startGameSpringerTest(){
-        String[] moves = {"e2 e4", "d2 d4", "c1 h6", "g1 f3", "b1 d2", "f1 d3", "c2 c4", "c4 b5", "b5 a6", "O-O"};
+        String[] moves = {"e2 e4", "d2 d4", "e4 d5", "b1 c3", "d1 h5", "h5 d1", "f1 c4", "g1 e2", "d5 d6", "c4 d5", "d6 e7", "e7 d8", "e2 f4"};
         int i = -1;
         String c = userColor ? "White" : "Black";
         String text = c + " to move: ";
