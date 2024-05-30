@@ -7,7 +7,7 @@ public class King extends Piece {
         super(color, position, board, "King");
     }
     public King(King p, Board board){super(p, board);}
-    public Set<Move> getMoves() {
+    public void updateMoves() {
         int[] around = {position - 1, position + 1, position - 7, position + 7,
                 position - 8, position + 8, position - 9, position + 9};
         Set<Move> moves = new HashSet<Move>();
@@ -20,11 +20,11 @@ public class King extends Piece {
         if(canCastleLong()) moves.add(board.createMove(position, position - 2));
 
         board.filterLegalMoves(moves);
-        return moves;
+        this.legalMoves = moves;
     }
 
     public boolean inCheckmate(){
-        return inCheck() && getMoves().size() == 0;
+        return inCheck() && (color?board.getWhiteMoves().size()==0:board.getBlackMoves().size()==0);
     }
     public boolean inCheck(){
         // Check hostile pawn diagonals, bishops and queens on diagonals, rooks and queen on horizontals,
@@ -36,21 +36,21 @@ public class King extends Piece {
     // Returns true if the King is legally able to castle short.
     public boolean canCastleShort(){
         // Legal piece arrangement for short castling, clear line and unmoved king and rook
-        if(hasMoved) return false; //  || position != (color?4:60)
+        if(hasMoved || inCheck()) return false; //  || position != (color?4:60)
         if(board.get(position+1) != null || board.get(position+2) != null || board.get(position+3) == null) return false;
         if(!board.get(position+3).type.equals("Rook") || board.get(position+3).hasMoved) return false;
         // Can't castle through check
         boolean checked;
         Move m1 = new Move(this, position, position+1, null, null, null);
         Move m2 = new  Move(this, position+1, position+2, null, null, null);
-        board.primitiveMove(m1);
+        board.primitiveMove(m1, false);
         checked = inCheck();
-        board.primitiveMove(m2);
+        board.primitiveMove(m2, false);
         checked = checked || inCheck();
 
         // Return the king
-        board.undoPrimitiveMove(m2);
-        board.undoPrimitiveMove(m1);
+        board.undoPrimitiveMove(m2, false);
+        board.undoPrimitiveMove(m1, false);
 
         return !checked;
     }
@@ -71,7 +71,7 @@ public class King extends Piece {
 
     public boolean canCastleLong(){
         // Legal piece arrangement for long castling, clear line and unmoved king and rook
-        if(hasMoved) return false;
+        if(hasMoved || inCheck()) return false;
         if(board.get(position-1) != null || board.get(position-2) != null || board.get(position-3) != null || board.get(position - 4) == null) return false;
         if(!board.get(position-4).type.equals("Rook") || board.get(position-4).hasMoved) return false;
         // Can't castle through check
@@ -79,16 +79,16 @@ public class King extends Piece {
         Move m1 = new Move(this, position, position-1, null, null, null);
         Move m2 = new Move(this, position-1, position-2, null, null, null);
         Move m3 = new Move(this, position-2, position-3, null, null, null);
-        board.primitiveMove(m1);
+        board.primitiveMove(m1, false);
         checked = inCheck();
-        board.primitiveMove(m2);
+        board.primitiveMove(m2, false);
         checked = checked || inCheck();
-        board.primitiveMove(m3);
+        board.primitiveMove(m3, false);
         checked = checked || inCheck();
         // Return the king
-        board.undoPrimitiveMove(m3);
-        board.undoPrimitiveMove(m2);
-        board.undoPrimitiveMove(m1);
+        board.undoPrimitiveMove(m3, false);
+        board.undoPrimitiveMove(m2, false);
+        board.undoPrimitiveMove(m1, false);
 
         return !checked;
     }

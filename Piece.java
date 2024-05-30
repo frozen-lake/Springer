@@ -10,8 +10,10 @@ public abstract class Piece {
     protected final int originalPosition;
     protected boolean hasMoved;
     public final Board board;
+    public Set<Move> legalMoves;
 
     public Piece(boolean color, int position, Board board, String type){
+        this.legalMoves = new HashSet<Move>();
         this.color = color;
         this.position = position;
         this.hasMoved = false;
@@ -22,6 +24,7 @@ public abstract class Piece {
         board.addPiece(this);
     }
     public Piece(Piece piece, Board board){
+        this.legalMoves = new HashSet<Move>();
         color=piece.color;
         position=piece.position;
         hasMoved=piece.hasMoved;
@@ -34,7 +37,10 @@ public abstract class Piece {
     public void setPosition(int p){ this.position = p; }
 
     public int getPosition(){ return position; }
-    public abstract Set<Move> getMoves();
+    public abstract void updateMoves();
+    public Set<Move> getMoves(){
+        return legalMoves;
+    }
 
     public void captured(){
 //        board.pieces.removeIf(this::equals);
@@ -68,8 +74,17 @@ public abstract class Piece {
     public int defense(){
         return terminalProjections(true, position);
     }
+    public boolean attackedByPawn() {
+        return false; // WIP
+    }
     public int terminalProjections(boolean friendly, int pos){
         return terminalProjectors(friendly, pos).size();
+    }
+
+    // Returns the set of friendly pieces which this piece protects.
+    public Set<Piece> protects(){
+
+        return null; //Projection
     }
 
     // Returns the number of defenders or attackers on this piece if it were at the given position.
@@ -145,4 +160,7 @@ public abstract class Piece {
     public String toStringDebug(){
         return "{type: " + this.type + ", color: " + color + ", position: " + position + ", origin: " + originalPosition + " }";
     }
+
+
+
 }

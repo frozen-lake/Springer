@@ -8,7 +8,7 @@ public class Knight extends Piece {
     }
     public Knight(Knight p, Board board){super(p, board);}
 
-    public Set<Move> getMoves(){
+    public void updateMoves(){
         int[] around = {position - 6, position + 6, position - 10, position + 10,
                 position - 15, position + 15, position - 17, position + 17};
         Set<Move> moves = new HashSet<Move>();
@@ -18,7 +18,7 @@ public class Knight extends Piece {
             }
         }
         board.filterLegalMoves(moves);
-        return moves;
+        this.legalMoves = moves;
     }
     public String toString(){
         return this.color ? "N" : "n";

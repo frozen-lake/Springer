@@ -6,13 +6,13 @@ public class Queen extends Piece {
         super(color, position, board, "Queen");
     }
     public Queen(Queen p, Board board){super(p, board);}
-    public Set<Move> getMoves(){
+    public void updateMoves(){
         Projection p = new Projection(position, true, board);
         p.projectDiagonal(); p.projectStraight();
         Set<Move> moves = p.moves();
 
         board.filterLegalMoves(moves);
-        return moves;
+        this.legalMoves = moves;
     }
     public String toString(){
         if(this.color){

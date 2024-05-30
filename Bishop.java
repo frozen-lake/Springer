@@ -7,13 +7,16 @@ public class Bishop extends Piece {
     }
     public Bishop(Bishop p, Board board){super(p, board);}
     @Override
-    public Set<Move> getMoves() {
+    public void updateMoves() {
         Projection p = new Projection(position, true, board);
         p.projectDiagonal();
         Set<Move> moves = p.moves();
         board.filterLegalMoves(moves);
-        return moves;
+        this.legalMoves = moves;
     }
+//    public int calculateScope(){
+//        return 0;
+//    }
 
 
     public String toString(){

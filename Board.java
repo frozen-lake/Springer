@@ -12,9 +12,9 @@ public class Board {
     protected King kingB;
 
     protected ArrayList<Move> moves;
-    //protected Set<Piece> pieces;
-    //protected Set<Piece> whiteArmy;
-   //protected Set<Piece> blackArmy;
+    protected Set<Piece> pieces;
+    protected Set<Piece> whitePieces;
+    protected Set<Piece> blackPieces;
     protected boolean sideToMove;
     protected Boolean winner;
 
@@ -54,7 +54,7 @@ public class Board {
     }
 
     private void initializeBoard(){
-        //pieces = new HashSet<Piece>(); whiteArmy = new HashSet<Piece>(); blackArmy = new HashSet<Piece>();
+        pieces = new HashSet<Piece>(); whitePieces = new HashSet<Piece>(); blackPieces = new HashSet<Piece>();
         moves = new ArrayList<Move>();
         sideToMove = true;
         winner = null;
@@ -62,8 +62,46 @@ public class Board {
         populateBoard();
         kingW = (King) get(4);
         kingB = (King) get(60);
+        updateProperties();
     }
 
+    public void updatePieces(){
+        Set<Piece> set = new HashSet<Piece>();
+        Piece p;
+        for(int i=0;i<=63;i++){
+            p = get(i);
+            if(p != null) set.add(p);
+        }
+        pieces = set;
+    }
+    public Set<Piece> pieces(){
+        return pieces;
+    }
+
+    public void updateWhitePieces(){
+        Set<Piece> set = new HashSet<Piece>();
+        Piece p;
+        for(int i=0;i<=63;i++){
+            p = get(i);
+            if(p != null && p.color) set.add(p);
+        }
+        whitePieces = set;
+    }
+    public Set<Piece> whitePieces(){
+        return whitePieces;
+    }
+    public void updateBlackPieces(){
+        Set<Piece> set = new HashSet<Piece>();
+        Piece p;
+        for(int i=0;i<=63;i++){
+            p = get(i);
+            if(p != null && !p.color) set.add(p);
+        }
+        blackPieces =  set;
+    }
+    public Set<Piece> blackPieces(){
+        return blackPieces;
+    }
     public Set<Move> getWhiteMoves(){
         Set<Move> s = new HashSet<Move>();
         for(Piece p: whitePieces()){
@@ -102,35 +140,7 @@ public class Board {
         board.get(pos % 8).set(pos / 8, p);
     }
 
-    public Set<Piece> pieces(){
-        Set<Piece> set = new HashSet<Piece>();
-        Piece p;
-        for(int i=0;i<=63;i++){
-            p = get(i);
-            if(p != null) set.add(p);
-        }
-        return set;
-    }
 
-    public Set<Piece> whitePieces(){
-        Set<Piece> set = new HashSet<Piece>();
-        Piece p;
-        for(int i=0;i<=63;i++){
-            p = get(i);
-            if(p != null && p.color) set.add(p);
-        }
-        return set;
-    }
-
-    public Set<Piece> blackPieces(){
-        Set<Piece> set = new HashSet<Piece>();
-        Piece p;
-        for(int i=0;i<=63;i++){
-            p = get(i);
-            if(p != null && !p.color) set.add(p);
-        }
-        return set;
-    }
 
     // Filters a set of moves by removing self checks.
     public void filterLegalMoves(Set<Move> moves){
@@ -152,10 +162,10 @@ public class Board {
             Move m = iter.next();
             Piece oldTo = get(m.to());
 
-            primitiveMove(m);
+            primitiveMove(m, false);
             if(m.piece().color && kingW.inCheck()) iter.remove();
             if(!m.piece().color && kingB.inCheck()) iter.remove();
-            undoPrimitiveMove(m);
+            undoPrimitiveMove(m, false);
         }
     }
 
@@ -183,9 +193,40 @@ public class Board {
         return false;
     }
 
+    // Tests checkmate on the given king, ending the game here if so.
+    public void checkCheckmate(King k){
+        if(k.inCheckmate()){
+            winner = !k.color;
+        }
+    }
+
+    // Performs a legal chess move on this board after validation. Also checks for checkmate.
+    public void makeMove(Move m){
+        if(!validateMove(m)) {
+            if (debugBoard){
+                printBoardW(); // Move m not a member of m.piece().getMoves()
+                System.out.println("makeMove() call debug: Move being tried: " + m);
+                System.out.println(get(61).getMoves().contains(m));
+                System.out.println(m.capture().toStringDebug() + " | " );
+                System.out.println("Possible moves for " + m.piece() + ": " + m.piece().getMoves());
+                System.out.println("Moves: " + moves);
+            }
+            throw new IllegalArgumentException();
+        }
+
+        primitiveMove(m, true);
+
+        checkCheckmate(!m.piece().color?kingW:kingB);
+    }
+
+    public void undoMove(Move m){
+        undoPrimitiveMove(m, true);
+    }
+
+
     // Executes the primitive move operations without of the decoration from makeMove.
     // Does not validate move but DOES update the piece's position property.
-    protected void primitiveMove(Move m){
+    protected void primitiveMove(Move m, boolean update){
         moves.add(m);
         sideToMove = !sideToMove;
         if(m.castle() != null){
@@ -193,12 +234,10 @@ public class Board {
                 ((King) m.piece()).castleShort();
                 if(m.isFirstMove()) m.piece().hasMoved = true;
                 get(m.to() - 1).hasMoved = true;
-                return;
             } else if(m.castle().equals("Q")){
                 ((King) m.piece()).castleLong();
                 if(m.isFirstMove()) m.piece().hasMoved = true;
                 get(m.to() + 1).hasMoved = true;
-                return;
             }
         } else {
             set(m.to(), m.piece());
@@ -207,9 +246,13 @@ public class Board {
             if(m.capture() != null) m.capture().captured();
             if(m.isFirstMove()) m.piece().hasMoved = true;
 
+            if(m.promotion() != null){
+                ((Pawn) m.piece()).promote(m.promotion());
+            }
         }
+        if(update) updateProperties();
     }
-    protected void undoPrimitiveMove(Move m){
+    protected void undoPrimitiveMove(Move m, boolean update){
         if(m.promotion() == null && get(m.to()) != m.piece()) {
             if(debugBoard){
                 printBoardW();
@@ -243,55 +286,21 @@ public class Board {
                 get(m.to() - 2).hasMoved = false;
             }
         }
+        if(update) updateProperties();
     }
-    // Records move, checks for end of game, and passes turn.
-    public void endTurn(Move m){
-        checkCheckmate(!m.piece().color?kingW:kingB);
-    }
+    // Updates board and piece properties, typically called after a move has been played.
+    public void updateProperties(){
+        updatePieces();
+        updateWhitePieces();
+        updateBlackPieces();
 
-    // Performs a legal chess move on this board. Validates,
-    // Executes castling maneuvers and promotion, and updates hasMoved property.
-    public void makeMove(Move m){
-        if(!validateMove(m)) {
-            if (debugBoard){
-                printBoardW(); // Move m not a member of m.piece().getMoves()
-                System.out.println("makeMove() call debug: Move being tried: " + m);
-                System.out.println(get(61).getMoves().contains(m));
-                System.out.println(m.capture().toStringDebug() + " | " );
-                System.out.println("Possible moves for " + m.piece() + ": " + m.piece().getMoves());
-                System.out.println("Moves: " + moves);
-            }
-            throw new IllegalArgumentException();
-        }
-
-        primitiveMove(m);
-
-        if(m.promotion() != null){
-            ((Pawn) m.piece()).promote(m.promotion());
-        }
-
-        endTurn(m);
-    }
-
-    // WIP Urgent: castling and promotion
-    public void undoMove(Move m){
-
-
-        undoPrimitiveMove(m);
-
-        set(m.from(), m.piece()); // undo promote
-    }
-
-    // Tests checkmate on the given king, ending the game here if so.
-    public void checkCheckmate(King k){
-        if(k.inCheckmate()){
-            winner = k.color;
-//            if(winner){printBoardW();}else{printBoardB();}
-//            System.out.println("Game over! " + (!k.color?"White":"Black") + " won by checkmate.");
-        } else {
-
+        // Generate new set of all pieces, white pieces, black pieces.
+        // Tell every piece to update its local properties.
+        for(Piece p: pieces){
+            p.updateMoves();
         }
     }
+
 
     public void printBoardB(){
         System.out.println("    -------------------------------");

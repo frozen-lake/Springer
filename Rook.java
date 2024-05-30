@@ -9,12 +9,12 @@ public class Rook extends Piece {
     }
     public Rook(Rook p, Board board){super(p, board);}
 
-    public Set<Move> getMoves(){
+    public void updateMoves(){
         Projection p = new Projection(position, true, board);
         p.projectStraight();
         Set<Move> moves = p.moves();
         board.filterLegalMoves(moves);
-        return moves;
+        this.legalMoves = moves;
     }
 
     // Returns true if there is a horizontal or vertical line from this rook to the other with no king between.

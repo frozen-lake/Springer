@@ -9,7 +9,7 @@ public class Pawn extends Piece {
     public Pawn(boolean color, int position, Board board){
         super(color, position, board, "Pawn");
     }
-    public Set<Move> getMoves(){
+    public void updateMoves(){
         int forward = color ? position + 8 : position - 8;
         Set<Move> moves = new HashSet<Move>();
 
@@ -24,6 +24,7 @@ public class Pawn extends Piece {
                 }
             }
         }
+
         if(board.validPosition(forward) && board.get(forward) == null) {
 
             if(board.isPromotion(position, forward)){
@@ -31,7 +32,6 @@ public class Pawn extends Piece {
 
             } else {
                 moves.add(board.createMove(position, forward));
-                //System.out.println(position + " | " + board.get(position) + "dogdogdog");
             }
 
             int doubleForward = color ? forward + 8 : forward - 8;
@@ -42,7 +42,7 @@ public class Pawn extends Piece {
 
 
         board.filterLegalMoves(moves);
-        return moves;
+        this.legalMoves = moves;
     }
 
     //

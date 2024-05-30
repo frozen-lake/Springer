@@ -152,6 +152,8 @@ public class Chess {
                 sp.takeTurn();
             }
         }
+        printBoard();
+        System.out.println("Winner is " + (board.winner?"white":"black"));
     }
     public void startGameSpringerTest(){
         String[] moves = {"e2 e4", "d2 d4", "e4 d5", "b1 c3", "d1 h5", "h5 d1", "f1 c4", "g1 e2", "d5 d6", "c4 d5", "d6 e7", "e7 d8", "e2 f4"};

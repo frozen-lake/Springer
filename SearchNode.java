@@ -5,14 +5,12 @@ public class SearchNode {
     public int score; // Search score
     public int eval; // Concrete evaluation
     public SearchNode next; // Next in series of best moves
-    public boolean isBest;
-    public Set<SearchNode> children;
+    public Set<SearchNode> children; // All nodes explored at the next depth level
     public Move move;
     public SearchNode(int score){
         children = new HashSet<SearchNode>();
         this.score = score;
         this.next = null;
-        this.isBest = false;
         this.eval = 0;
     }
     public SearchNode(Move move){
@@ -20,7 +18,6 @@ public class SearchNode {
         this.score = 0;
         this.next = null;
         this.move = move;
-        this.isBest = false;
         this.eval = 0;
     }
     public SearchNode(int score, Move move){
@@ -28,7 +25,6 @@ public class SearchNode {
         this.score = score;
         this.next = null;
         this.move = move;
-        this.isBest = false;
         this.eval = score; // Base case node; end of recursive depth
     }
 
