@@ -273,6 +273,7 @@ public class Board {
 
         // Rook
         if(m.castle()!=null) {
+            ((King) m.piece()).castled = null;
 
             if (m.castle().equals("K")) {
                 set(m.to() + 1, get(m.to() - 1));

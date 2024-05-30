@@ -2,25 +2,32 @@ import java.util.Set;
 import java.util.HashSet;
 
 public class King extends Piece {
-
+    public String castled;
     public King(boolean color, int position, Board board){
         super(color, position, board, "King");
+        castled = null;
     }
-    public King(King p, Board board){super(p, board);}
+    public King(King p, Board board){
+        super(p, board);
+        castled = null;
+    }
     public void updateMoves() {
-        int[] around = {position - 1, position + 1, position - 7, position + 7,
-                position - 8, position + 8, position - 9, position + 9};
-        Set<Move> moves = new HashSet<Move>();
-        for(int j : around){
-            if(board.validPosition(j) && (board.get(j)==null || (board.get(j).color != color))){
-                moves.add(board.createMove(position, j));
-            }
-        }
-        if(canCastleShort()) moves.add(board.createMove(position, position + 2));
-        if(canCastleLong()) moves.add(board.createMove(position, position - 2));
+        Projection p = new Projection(position, color, board);
+        p.projectKing(true);
+        legalMoves = p.moves();
+        p.clear();
+//        int[] around = {position - 1, position + 1, position - 7, position + 7,
+//                position - 8, position + 8, position - 9, position + 9};
+//        Set<Move> moves = new HashSet<Move>();
+//        for(int j : around){
+//            if(board.validPosition(j) && (board.get(j)==null || (board.get(j).color != color))){
+//                moves.add(board.createMove(position, j));
+//            }
+//        }
+        if(canCastleShort()) legalMoves.add(board.createMove(position, position + 2));
+        if(canCastleLong()) legalMoves.add(board.createMove(position, position - 2));
 
-        board.filterLegalMoves(moves);
-        this.legalMoves = moves;
+        board.filterLegalMoves(legalMoves);
     }
 
     public boolean inCheckmate(){
@@ -36,7 +43,7 @@ public class King extends Piece {
     // Returns true if the King is legally able to castle short.
     public boolean canCastleShort(){
         // Legal piece arrangement for short castling, clear line and unmoved king and rook
-        if(hasMoved || inCheck()) return false; //  || position != (color?4:60)
+        if(castled!=null || hasMoved || inCheck()) return false; //  || position != (color?4:60)
         if(board.get(position+1) != null || board.get(position+2) != null || board.get(position+3) == null) return false;
         if(!board.get(position+3).type.equals("Rook") || board.get(position+3).hasMoved) return false;
         // Can't castle through check
@@ -67,11 +74,12 @@ public class King extends Piece {
         board.set(position+1, null);
         board.get(position - 1).setPosition(position - 1);
 
+        castled = "K";
     }
 
     public boolean canCastleLong(){
         // Legal piece arrangement for long castling, clear line and unmoved king and rook
-        if(hasMoved || inCheck()) return false;
+        if(castled!=null|| hasMoved || inCheck()) return false;
         if(board.get(position-1) != null || board.get(position-2) != null || board.get(position-3) != null || board.get(position - 4) == null) return false;
         if(!board.get(position-4).type.equals("Rook") || board.get(position-4).hasMoved) return false;
         // Can't castle through check
@@ -102,6 +110,7 @@ public class King extends Piece {
         board.set(position + 1, board.get(position - 2)); // Move rook
         board.set(position-2, null);
         board.get(position + 1).setPosition(position + 1);
+        castled = "Q";
     }
 
     public String toString(){

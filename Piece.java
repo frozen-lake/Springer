@@ -75,7 +75,16 @@ public abstract class Piece {
         return terminalProjections(true, position);
     }
     public boolean attackedByPawn() {
-        return false; // WIP
+        // White piece attacked by black pawn
+        if(color) return position/8<7 && (
+                (board.validPosition(position+7)&&board.get(position+7)!=null&&board.get(position+7).type.equals("Pawn")&&!board.get(position+7).color)
+                        || (board.validPosition(position+9)&&board.get(position+9)!=null&&board.get(position+9).type.equals("Pawn")&&!board.get(position+9).color)
+        );
+        // Black piece attacked by white pawn
+        return position/8>0 && (
+                (board.validPosition(position-7)&&board.get(position-7)!=null&&board.get(position-7).type.equals("Pawn")&&board.get(position-7).color)
+                        || (board.validPosition(position-9)&&board.get(position-9)!=null&&board.get(position-9).type.equals("Pawn")&&board.get(position-9).color)
+        );
     }
     public int terminalProjections(boolean friendly, int pos){
         return terminalProjectors(friendly, pos).size();
@@ -89,14 +98,18 @@ public abstract class Piece {
 
     // Returns the number of defenders or attackers on this piece if it were at the given position.
     public Set<Piece> terminalProjectors(boolean friendly, int pos){
+        Piece old = board.get(pos);
+        int oldPos = position;
+        board.set(pos, this);
+
         Set<Piece> projectors = new HashSet<Piece>();
         // Check relevant pawn diagonals, bishops and queens on diagonals, rooks and queen on horizontals,
         // enemy king on all surrounding squares, and all 8 knight squares.
 
 //        Set<Move> straightProjections = board.straightProjection(pos, false);
 //        Set<Move> diagonalProjections = board.diagonalProjection(pos, false);
-        Projection p = new Projection(position, !friendly, board);
-        p.projectDiagonal();
+        Projection p = new Projection(position, color, board);
+        p.projectDiagonal(!friendly);
         Iterator<ProjectionNode> iter = p.iterator();
         while(iter.hasNext()){
             ProjectionNode node = iter.next();
@@ -105,7 +118,7 @@ public abstract class Piece {
             }
         }
         //
-        p.clear(); p.projectStraight();
+        p.clear(); p.projectStraight(!friendly);
         iter = p.iterator();
         while(iter.hasNext()){
             ProjectionNode node = iter.next();

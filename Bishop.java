@@ -8,8 +8,8 @@ public class Bishop extends Piece {
     public Bishop(Bishop p, Board board){super(p, board);}
     @Override
     public void updateMoves() {
-        Projection p = new Projection(position, true, board);
-        p.projectDiagonal();
+        Projection p = new Projection(position, color, board);
+        p.projectDiagonal(true);
         Set<Move> moves = p.moves();
         board.filterLegalMoves(moves);
         this.legalMoves = moves;

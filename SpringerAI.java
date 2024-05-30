@@ -1,10 +1,12 @@
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 
 public class SpringerAI {
 
     // Springer chess engine.
 
-
+    public HashMap<Integer, HashMap<String, Integer[]>> squareValues;
     public static final int depth = 2; // Default search depth
     public static final int depthSpecial=3;
     public Board analysisBoard; // Analysis board
@@ -21,9 +23,15 @@ public class SpringerAI {
         pieceValues.put("Queen", 900);
         pieceValues.put("King", 9999);
 
+        squareValues = new HashMap<Integer, HashMap<String, Integer[]>>();
+        squareValues.put(20, new HashMap<String, Integer[]>());
+        squareValues.get(20).put("P", new Integer[]{0,0,0,0,0,0,0,0,2,2,2,0,0,1,3,1,1,1,3,1,1,0,1,0,0,0,4,25,25,12,0,0,0,0,4,8,8,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
+        squareValues.get(20).put("p", new Integer[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,8,8,4,0,0,0,0,4,25,25,12,0,0,1,1,3,1,1,0,1,0,2,2,2,0,0,1,3,1,0,0,0,0,0,0,0,0});
+
         this.gameBoard = board;
         this.analysisBoard = new Board(board);
         this.colorPlaying = false;
+
     }
 
     // takeTurn(): Creates an analysis board of the current board state. There it searches for the best move,
@@ -147,6 +155,9 @@ public class SpringerAI {
         int friendlyThreats = 0;
         int enemyThreats = 0;
 
+        // Checkmate
+        if((scoringFor&&analysisBoard.getBlackMoves().size()==0)||(!scoringFor&&analysisBoard.getWhiteMoves().size()== 0)) return Integer.MAX_VALUE;
+
 
 
         // Piece value
@@ -180,118 +191,129 @@ public class SpringerAI {
             int pieceMultiplier = p.color != analysisBoard.sideToMove ? 1 : -1;
             Set<Move> moves = p.getMoves();
             int pieceValue = pieceValues.get(p.type);
+
+            // Enemy and friendly projections
+            Projection pieceProjection = new Projection(p.position, p.color, true, analysisBoard);
             switch(p.type){
                 case "Pawn":
-                    // Center pawn bonus
-                    if(p.position % 8 > 2 && p.position % 8 < 5 && p.position / 8 > 2 && p.position / 8 < 5){
-                        eval += 33 * pieceMultiplier;
+                    if(analysisBoard.moves.size() <= 20){
+                        eval += squareValues.get(20).get(p.toString())[p.position] * pieceMultiplier;
                     }
-                    // Threats
-//                    if(p.protectedByPawn() || p.defended()) { // Stable pawn
-//                        for(Move move: p.getMoves()){
-//                            if(move.capture() != null && !move.capture().type.equals("Pawn")){
-//
-//                                if(scoringFor == p.color) {
-//                                    eval += 33 * pieceMultiplier;
-//                                    friendlyThreats += 1;
-//                                }
-//                                else {
-//                                    eval -= pieceValues.get(move.capture().type) * pieceMultiplier;
-//                                    eval += 100 * pieceMultiplier;
-//                                    enemyThreats += 1;
-//                                }
-//                            }
-//                        }
-//                    }
+                    // Extra center pawn bonus
+                    if(analysisBoard.moves.size() <= 20 && p.position % 8 > 2 && p.position % 8 < 5 && p.position / 8 > 2 && p.position / 8 < 5){
+                        eval += 20 * pieceMultiplier;
+                    }
+
+                    // Bad mobility penalty
+                    if(((Pawn) p).doubled()){ eval -= 12 * pieceMultiplier; }
+
+                    // Blocking center pawn at original square penalty
+                    int forward = p.color?p.position+8:p.position-8;
+                    if((p.position % 8 == 3 || p.position % 8 == 4)
+                            && ((p.color&&p.position/8==1)||(!p.color&&p.position/8==6))
+                            && analysisBoard.validPosition(forward) && analysisBoard.get(forward) != null){
+                        if(analysisBoard.get(forward).color == p.color){
+                            eval -= 20 * pieceMultiplier;
+                        }
+                    }
+
+                    pieceProjection.projectPawnAttack(false);
+                    for(ProjectionNode node: pieceProjection.nodes){
+                        if(node.dest != null && node.dest.color == p.color){
+                            // Protecting a pawn or piece bonus
+                            eval += 2 * pieceMultiplier;
+                            // Pawn defend pawn bonus
+                            if(node.dest.type.equals("Pawn")) eval += 2 * pieceMultiplier;
+                        }
+                    }
                     break;
                 case "Knight":
+                    // Score for legal moves to a square not threatened by an enemy pawn
+                    for(Move move: p.getMoves()){
+                        analysisBoard.primitiveMove(move, false);
+                        if(!p.attackedByPawn()) eval += 4 * pieceMultiplier;
+                        analysisBoard.undoPrimitiveMove(move, false);
+
+                    }
+                    // Early game development
+                    if(analysisBoard.moves.size() <= 16){
+                        if((p.color&&p.position/8<7) || (!p.color&&p.position/8>0)){
+                            eval += 10 * pieceMultiplier;
+                        }
+                    }
+
+                    // Knight on the rim is dim
+                    if(p.position%8==0 || p.position%8==7) eval -= 6 * pieceMultiplier;
+                    break;
+
+                case "Bishop":
                     eval += 2 * pieceMultiplier * p.getMoves().size();
                     // Early game development
-                    if(analysisBoard.moves.size() < 6){
+                    if(analysisBoard.moves.size() <= 16){
                         if((p.color&&p.position/8<7) || (!p.color&&p.position/8>0)){
-                            eval += 12 * pieceMultiplier;
+                            eval += 6 * pieceMultiplier;
                         }
                     }
-
-//                    for(Move move: p.getMoves()){
-//                        if(move.capture() != null
-//                                && (!move.capture().type.equals("Pawn"))
-//                                && (!move.capture().type.equals("Bishop"))
-//                                && (!move.capture().type.equals("Knight"))
-//                        ){
-//                            if(scoringFor == p.color) {
-//                                eval += 33 * pieceMultiplier;
-//                                friendlyThreats += 1;
-//                            }
-//                            else {
-//                                eval -= pieceValues.get(move.capture().type) * pieceMultiplier;
-//                                if(p.terminalProjections(false, move.to()) > 0 ) eval += 300 * pieceMultiplier;
-//                                enemyThreats += 1;
-//                            }
-//                        }
-//                    }
                     break;
-                case "Bishop":
-                    eval += 3 * pieceMultiplier * p.getMoves().size();
-                    // Early game development
-                    if(analysisBoard.moves.size() < 6){
-                        if((p.color&&p.position/8<7) || (!p.color&&p.position/8>0)){
-                            eval += 8 * pieceMultiplier;
-                        }
-                    }
 
-//                    for(Move move: p.getMoves()){
-//                        if(move.capture() != null
-//                                && (!move.capture().type.equals("Pawn"))
-//                                && (!move.capture().type.equals("Bishop"))
-//                                && (!move.capture().type.equals("Knight"))
-//                        ){
-//                            if(scoringFor == p.color) {
-//                                eval += 33 * pieceMultiplier;
-//                                friendlyThreats += 1;
-//                            }
-//                            else { // enemy bishop threat
-//                                eval -= pieceValues.get(move.capture().type) * pieceMultiplier;
-//
-//                                // Expand: cases where defended by pawn or not, attacked by pawn or not, with pieces, etc.
-//                                if(p.terminalProjections(false, move.to()) > 0 ) eval += 300 * pieceMultiplier;
-//                                enemyThreats += 1;
-//                            }
-//                        }
-//                    }
-                    break;
                 case "Rook":
-
-                    if(((Rook) p).connected()){
-
-                    } else if(((Rook) p).orthogonalNoKing()){
+                    Rook r = (Rook) p;
+                    if(r.connected()){
+                        eval += 10 * pieceMultiplier;
+                    } else if(r.orthogonalNoKing()){
                         eval += 5 * pieceMultiplier;
                     }
-                    if(analysisBoard.moves.size() < 10 && p.position != p.originalPosition) eval -= 8 * pieceMultiplier;
+                    if(analysisBoard.moves.size() <= 8 && p.position != p.originalPosition) eval -= 6 * pieceMultiplier;
+
+                    if(r.onOpenFile()){
+                        eval += 20 * pieceMultiplier;
+                    } else if(r.onSemiOpenFile()){
+                        eval += 13 * pieceMultiplier;
+                    }
+
+                    if(analysisBoard.moves.size() <= 40){
+                        eval -= 40 * pieceMultiplier;
+                    }
+
+
                     break;
                 case "Queen":
+                    if(analysisBoard.moves.size() < 12){
+                        if(p.position != p.originalPosition){
+                            eval -= 10 * pieceMultiplier;
+                        }
+                    }
                     break;
                 case "King":
                     King k = (King) p;
 
                     // Subtract points for King above home rank
-                    if(analysisBoard.moves.size() < 10 && ((k.color&&k.position/8!=0)||(!k.color&&k.position/8!=7))) {
-                        //System.out.println("reducing points for bad king");
+                    if(analysisBoard.moves.size() < 16 && ((k.color&&k.position/8!=0)||(!k.color&&k.position/8!=7))) {
                         eval -= 60 * pieceMultiplier;
                     }
 
+                    // Add points if castled, add less points if can castle
+                    if(((King) p).castled != null) eval += 16 * pieceMultiplier;
                     if(((King) p).canCastleShort() || ((King) p).canCastleLong()){
-                        eval += 15 * pieceMultiplier;
+                        eval += 6 * pieceMultiplier;
                     }
+
+                    // Subtract points for being on an open diagonal
+                    Projection proj = new Projection(k.position, true, analysisBoard);
+                    proj.projectDiagonal(false); proj.projectStraight(false);
+                    eval -= proj.nodes.size() * pieceMultiplier;
                     break;
             }
 
+            pieceProjection.clear();
+
+
+            // Calculate threats on this piece
             if(p.color==scoringFor && (p.attackedByPawn() || (!p.protectedByPawn() && !p.defended()))){ // Friendly piece under threat
-
                 eval -= pieceValue * pieceMultiplier;
-
             }  else if(p.color==scoringFor){
                 if(p.type.equals("Queen")){
+
                     String type = null;
                     for(Piece attacker: p.terminalProjectors(false, p.position)){
                         if(type == null){type=attacker.type;continue;}
@@ -312,6 +334,7 @@ public class SpringerAI {
                 }
             }
 
+            // Count threats against this piece
 
 
             // Move count mobility bonus

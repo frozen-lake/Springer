@@ -156,7 +156,10 @@ public class Chess {
         System.out.println("Winner is " + (board.winner?"white":"black"));
     }
     public void startGameSpringerTest(){
-        String[] moves = {"e2 e4", "d2 d4", "e4 d5", "b1 c3", "d1 h5", "h5 d1", "f1 c4", "g1 e2", "d5 d6", "c4 d5", "d6 e7", "e7 d8", "e2 f4"};
+        //String[] moves = {"e2 e4", "d2 d4", "e4 d5", "b1 c3", "d1 h5", "h5 d1", "f1 c4", "g1 e2", "d5 d6", "c4 d5", "d6 e7", "e7 d8", "e2 f4"};
+        //String[] moves = {"e2 e4", "d2 d4", "g2 g3", "c1 e3", "d1 d4", "d4 e5", "e5 g5", "g5 d5", "b2 b4", "b1 d2", "e1 f1", "g1 f3", "f3 e5", "f1 g1", "a1 c1", "c1 f1", "h2 h4", "g1 g2", "h1 h3", "g2 h3", "h3 g4", "f2 f4", "g4 g5", "g3 g4", "f4 f5", "g5 h5"};
+        String[] moves = {"e2 e4", "g1 f3", "f1 b5", "O-O", "b5 a4", "a4 b3", "a2 a3", "d2 d3", "f3 g5", "g1 h1", "g5 f3", "d1 e2", "f1 e2", "f1 f2", "e2 f2", "b3 e6", "f2 e2", "f3 d4", "e4 e5", "e2 e5"};
+
         int i = -1;
         String c = userColor ? "White" : "Black";
         String text = c + " to move: ";
@@ -227,6 +230,9 @@ public class Chess {
                 sp.takeTurn();
             }
         }
+        printBoard();
+        System.out.println("Winner is " + (board.winner?"white":"black"));
+        System.out.println("==="+board.sideToMove + board.get(38) + board.get(38).getMoves());
     }
     public void printBoard(){
         if(board.sideToMove) board.printBoardW();
