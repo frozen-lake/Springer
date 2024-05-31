@@ -13,6 +13,9 @@ public class Knight extends Piece {
         p.projectKnight(true);
         legalMoves = p.moves();
         board.filterLegalMoves(legalMoves);
+
+        defenders = p.getDefenders();
+        attackers = p.getAttackers();
     }
     public String toString(){
         return this.color ? "N" : "n";

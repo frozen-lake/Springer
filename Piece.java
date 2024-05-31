@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -11,6 +12,11 @@ public abstract class Piece {
     protected boolean hasMoved;
     public final Board board;
     public Set<Move> legalMoves;
+    public Set<Piece> defenders;
+    public Set<Piece> attackers;
+    public Set<Piece> attacks;
+    public Set<Piece> defends;
+    public boolean pawnProtected;
 
     public Piece(boolean color, int position, Board board, String type){
         this.legalMoves = new HashSet<Move>();
@@ -20,6 +26,10 @@ public abstract class Piece {
         this.board = board;
         this.type = type;
         this.originalPosition = position;
+        this.attackers = new HashSet<Piece>();
+        this.defenders = new HashSet<Piece>();
+        this.attacks = new HashSet<Piece>();
+        this.defends = new HashSet<Piece>();
 
         board.addPiece(this);
     }
@@ -31,7 +41,18 @@ public abstract class Piece {
         type=piece.type;
         this.board = board;
         originalPosition = piece.originalPosition;
+        this.attackers = new HashSet<Piece>();
+        this.defenders = new HashSet<Piece>();
+        this.attacks = new HashSet<Piece>();
+        this.defends = new HashSet<Piece>();
+
         board.addPiece(this);
+    }
+
+
+
+    public boolean pawnProtected(){
+        return pawnProtected;
     }
 
     public void setPosition(int p){ this.position = p; }
@@ -56,35 +77,30 @@ public abstract class Piece {
         return n;
     }
     public boolean protectedByPawn(){
-        // White
-        if(color) return position/8>0 && (
-                (board.validPosition(position-7)&&board.get(position-7)!=null&&board.get(position-7).type.equals("Pawn")&&board.get(position-7).color)
-                || (board.validPosition(position-9)&&board.get(position-9)!=null&&board.get(position-9).type.equals("Pawn")&&board.get(position-9).color)
-        );
-        // Black
-        return position/8<7 && (
-                (board.validPosition(position+7)&&board.get(position+7)!=null&&board.get(position+7).type.equals("Pawn")&&!board.get(position+7).color)
-                        || (board.validPosition(position+9)&&board.get(position+9)!=null&&board.get(position+9).type.equals("Pawn")&&!board.get(position+9).color)
-        );
+        for(Piece d: defenders){
+            if(d.type.equals("Pawn")) return true;
+        }
+        return false;
     }
 
     public boolean defended(){
-        return terminalProjections(true, position) - terminalProjections(false, position) >= 0;
-    }
-    public int defense(){
-        return terminalProjections(true, position);
+        return defenders.size() - attackers.size() >= 0;
     }
     public boolean attackedByPawn() {
         // White piece attacked by black pawn
-        if(color) return position/8<7 && (
-                (board.validPosition(position+7)&&board.get(position+7)!=null&&board.get(position+7).type.equals("Pawn")&&!board.get(position+7).color)
-                        || (board.validPosition(position+9)&&board.get(position+9)!=null&&board.get(position+9).type.equals("Pawn")&&!board.get(position+9).color)
-        );
-        // Black piece attacked by white pawn
-        return position/8>0 && (
-                (board.validPosition(position-7)&&board.get(position-7)!=null&&board.get(position-7).type.equals("Pawn")&&board.get(position-7).color)
-                        || (board.validPosition(position-9)&&board.get(position-9)!=null&&board.get(position-9).type.equals("Pawn")&&board.get(position-9).color)
-        );
+//        if(color) return position/8<7 && (
+//                (board.validPosition(position+7)&&board.get(position+7)!=null&&board.get(position+7).type.equals("Pawn")&&!board.get(position+7).color)
+//                        || (board.validPosition(position+9)&&board.get(position+9)!=null&&board.get(position+9).type.equals("Pawn")&&!board.get(position+9).color)
+//        );
+//        // Black piece attacked by white pawn
+//        return position/8>0 && (
+//                (board.validPosition(position-7)&&board.get(position-7)!=null&&board.get(position-7).type.equals("Pawn")&&board.get(position-7).color)
+//                        || (board.validPosition(position-9)&&board.get(position-9)!=null&&board.get(position-9).type.equals("Pawn")&&board.get(position-9).color)
+//        );
+        for(Piece a: attackers){
+            if(a.type.equals("Pawn")) return true;
+        }
+        return false;
     }
     public int terminalProjections(boolean friendly, int pos){
         return terminalProjectors(friendly, pos).size();

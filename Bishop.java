@@ -13,6 +13,11 @@ public class Bishop extends Piece {
         Set<Move> moves = p.moves();
         board.filterLegalMoves(moves);
         this.legalMoves = moves;
+
+        p.clear();
+        defenders = p.getDefenders();
+        attackers = p.getAttackers();
+
     }
 //    public int calculateScope(){
 //        return 0;

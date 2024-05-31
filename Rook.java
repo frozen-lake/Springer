@@ -14,7 +14,10 @@ public class Rook extends Piece {
         p.projectStraight(true);
         Set<Move> moves = p.moves();
         board.filterLegalMoves(moves);
-        this.legalMoves = moves;
+
+        
+        defenders = p.getDefenders();
+        attackers = p.getAttackers();
     }
 
     // Returns true if there is a horizontal or vertical line from this rook to the other with no king between.

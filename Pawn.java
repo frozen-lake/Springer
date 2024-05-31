@@ -18,6 +18,9 @@ public class Pawn extends Piece {
         legalMoves = p.moves();
         board.filterLegalMoves(legalMoves);
 
+        defenders = p.getDefenders();
+        attackers = p.getAttackers();
+
         doubled = true;
         for (int i = position;board.validPosition(i);i += (color?8:-8)) {
             if (board.get(i) != null && board.get(i).type.equals("Pawn") && board.get(i).color==color) doubled = false;

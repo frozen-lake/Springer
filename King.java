@@ -28,6 +28,9 @@ public class King extends Piece {
         if(canCastleLong()) legalMoves.add(board.createMove(position, position - 2));
 
         board.filterLegalMoves(legalMoves);
+
+        defenders = p.getDefenders();
+        attackers = p.getAttackers();
     }
 
     public boolean inCheckmate(){

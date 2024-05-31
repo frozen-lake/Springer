@@ -33,6 +33,11 @@ public class SpringerAI {
         this.colorPlaying = false;
 
     }
+    public int getEval(){
+        analysisBoard = new Board(gameBoard);
+        analysisBoard.updateProperties();
+        return evaluate(null, false);
+    }
 
     // takeTurn(): Creates an analysis board of the current board state. There it searches for the best move,
     // which it then executes on the game board.
@@ -63,7 +68,7 @@ public class SpringerAI {
         gameBoard.makeMove(move);
 
 
-        System.out.println("Chosen move: " + move + ", score " + bestEval + ", new eval state " + evaluate(bestMove, false));
+        System.out.println("Chosen move: " + move + ", score " + bestEval + ", new eval state " + evaluate(bestMove, false) + ", new piece a/d: " + move.piece().attackers + "/" + move.piece().defenders);
         System.out.println("bestNode's children: " + bestNode.children);
         System.out.println("bestNode: " + bestNode + "\nmoves " + analysisBoard.moves.size());
     }
@@ -152,8 +157,14 @@ public class SpringerAI {
         boolean scoringFor = !analysisBoard.sideToMove;
         int scoreMultiplier = !analysisBoard.sideToMove?1:-1;
         int eval = 0;
-        int friendlyThreats = 0;
-        int enemyThreats = 0;
+
+        int threats = 0;
+        String lowestThreatenedPiece = ""; // Lowest value piece threatened by the side we are evaluating from
+
+        String highestThreatenedPiece = ""; // Highest value piece threatened by the enemy side
+        int highestThreatLoss = 0; // Any material loss the enemy will suffer associated with their biggest threat
+
+        eval -= 40 * (scoringFor?1:-1);
 
         // Checkmate
         if((scoringFor&&analysisBoard.getBlackMoves().size()==0)||(!scoringFor&&analysisBoard.getWhiteMoves().size()== 0)) return Integer.MAX_VALUE;
@@ -187,6 +198,8 @@ public class SpringerAI {
         // - Score mobility piece by piece
         // - Weight the bonus by the quality of the square
 
+        boolean enemyQueenThreatened = false;
+
         for(Piece p : analysisBoard.pieces()){
             int pieceMultiplier = p.color != analysisBoard.sideToMove ? 1 : -1;
             Set<Move> moves = p.getMoves();
@@ -196,16 +209,41 @@ public class SpringerAI {
             Projection pieceProjection = new Projection(p.position, p.color, true, analysisBoard);
             switch(p.type){
                 case "Pawn":
+                    King king = (p.color?analysisBoard.kingW:analysisBoard.kingB);
+                    // Protecting the king
+                    if(analysisBoard.moves.size() <= 60){
+                        if(p.position%8 == king.position%8 || (king.position%8!=0&&p.position%8 == (king.position-1)%8) || (king.position%8!=7&&p.position%8==(king.position+1)%8)){
+                            if((p.position/8 - king.position/8) < -2 || (p.position/8 - king.position/8) > 2){
+                                // Not protecting
+                                eval -= 6 * pieceMultiplier;
+                            } else {
+                                eval += 6 * pieceMultiplier;
+                            }
+                        }
+                    }
+
+                    // Apply early game pawn-square value matrix
                     if(analysisBoard.moves.size() <= 20){
                         eval += squareValues.get(20).get(p.toString())[p.position] * pieceMultiplier;
                     }
                     // Extra center pawn bonus
                     if(analysisBoard.moves.size() <= 20 && p.position % 8 > 2 && p.position % 8 < 5 && p.position / 8 > 2 && p.position / 8 < 5){
                         eval += 20 * pieceMultiplier;
+
+                        // Defended center pawn bonus
+                        for(Piece d: p.defenders){
+                            if(d.type.equals("Pawn")){
+                                eval += 15 * pieceMultiplier;
+                            } else if(d.type.equals("Knight")){
+                                eval += 12 * pieceMultiplier;
+                            } else {
+                                eval += 9 * pieceMultiplier;
+                            }
+                        }
                     }
 
                     // Bad mobility penalty
-                    if(((Pawn) p).doubled()){ eval -= 12 * pieceMultiplier; }
+                    if(((Pawn) p).doubled()){ eval -= 20 * pieceMultiplier; }
 
                     // Blocking center pawn at original square penalty
                     int forward = p.color?p.position+8:p.position-8;
@@ -259,11 +297,11 @@ public class SpringerAI {
                 case "Rook":
                     Rook r = (Rook) p;
                     if(r.connected()){
-                        eval += 10 * pieceMultiplier;
+                        eval += 7 * pieceMultiplier;
                     } else if(r.orthogonalNoKing()){
-                        eval += 5 * pieceMultiplier;
+                        eval += 4 * pieceMultiplier;
                     }
-                    if(analysisBoard.moves.size() <= 8 && p.position != p.originalPosition) eval -= 6 * pieceMultiplier;
+                    if(analysisBoard.moves.size() <= 10 && p.position != p.originalPosition) eval -= 8 * pieceMultiplier;
 
                     if(r.onOpenFile()){
                         eval += 20 * pieceMultiplier;
@@ -303,75 +341,158 @@ public class SpringerAI {
                     proj.projectDiagonal(false); proj.projectStraight(false);
                     eval -= proj.nodes.size() * pieceMultiplier;
                     break;
-            }
+                }
+                pieceProjection.clear();
 
-            pieceProjection.clear();
+                if(p.color==scoringFor){
+
+                    // Undefended pieces at end of turn penalty
+                    if(!p.type.equals("Pawn") && p.defenders.size() == 0){
+                        eval -= pieceValue / 10;
+                    }
 
 
-            // Calculate threats on this piece
-            if(p.color==scoringFor && (p.attackedByPawn() || (!p.protectedByPawn() && !p.defended()))){ // Friendly piece under threat
-                eval -= pieceValue * pieceMultiplier;
-            }  else if(p.color==scoringFor){
-                if(p.type.equals("Queen")){
+                    // Calculate threats on friendly piece
+                    if(!p.type.equals("Pawn") && (p.attackedByPawn() || (!p.protectedByPawn() && !p.defended()))){
 
-                    String type = null;
-                    for(Piece attacker: p.terminalProjectors(false, p.position)){
-                        if(type == null){type=attacker.type;continue;}
-                        if(attacker.type.equals("Pawn")){
-                            type="Pawn"; break;
-                        } else if(attacker.type.equals("Bishop") && !type.equals("Pawn")){
-                            type="Bishop";
-                        } else if(attacker.type.equals("Knight") && !type.equals("Pawn")){
-                            type="Knight";
-                        } else if(attacker.type.equals("Rook") && !type.equals("Pawn") && !type.equals("Knight") && !type.equals("Bishop")){
-                            type="Rook";
+                        if(highestThreatenedPiece.equals("") || pieceValues.get(p.type) > pieceValues.get(highestThreatenedPiece)){
+                            highestThreatenedPiece = p.type;
+                            if(p.defended()) highestThreatLoss = pieceValues.get("Pawn");
+                        }
+
+                    } else if(p.type.equals("Pawn")){
+                        if(!p.defended()){
+                            if(p.protectedByPawn()){
+                                boolean attackedByPawn = false;
+                                for(Piece attacker: p.attackers){
+                                    if(attacker.type.equals("Pawn")) {
+                                        attackedByPawn = true;break;
+                                    }
+                                }
+                                if(attackedByPawn){
+                                    if(highestThreatenedPiece.equals("") || pieceValues.get(p.type) > pieceValues.get(highestThreatenedPiece)){
+                                        highestThreatenedPiece = p.type;
+                                    }
+
+                                }
+                            } else {
+                                if(highestThreatenedPiece.equals("") || pieceValues.get(p.type) > pieceValues.get(highestThreatenedPiece)){
+                                    highestThreatenedPiece = p.type;
+                                }
+                            }
+                        }
+                    } else if(!p.protectedByPawn() && !p.defended()) {
+                        // Piece attacking piece
+                        String type = null;
+                        if (p.attackers.size() != 0) {
+                            for (Piece attacker : p.attackers) {
+                                if (type == null) {
+                                    type = attacker.type;
+                                    continue;
+                                }
+                                if (attacker.type.equals("Pawn")) {
+                                    type = "Pawn";
+                                    break;
+                                } else if (attacker.type.equals("Bishop")) {
+                                    type = "Bishop";
+                                } else if (attacker.type.equals("Knight")) {
+                                    type = "Knight";
+                                } else if (attacker.type.equals("Rook") && !type.equals("Knight") && !type.equals("Bishop")) {
+                                    type = "Rook";
+                                }
+                            }
+                        }
+                        if (type != null) {
+                            if(highestThreatenedPiece.equals("") || pieceValues.get(p.type) > pieceValues.get(highestThreatenedPiece)){
+                                highestThreatenedPiece = p.type;
+                            }
+                            //eval -= pieceValue * pieceMultiplier;
+                            //eval += pieceValues.get(type);
                         }
                     }
-                    if(type != null) {
-                        eval -= pieceValue;
-                        eval += pieceValues.get(type);
+                } else { // we know p.color != scoringFor
+                    // Calculate threats on enemy piece
+                    if(!p.type.equals("Pawn") && p.attackedByPawn()){ // Piece threatened by pawn
+                        switch(p.type){
+                            case "Queen":
+                                enemyQueenThreatened = true;
+                                if(!lowestThreatenedPiece.equals("Pawn")&&!lowestThreatenedPiece.equals("Rook")&&!lowestThreatenedPiece.equals("Knight")&&!lowestThreatenedPiece.equals("Bishop")) lowestThreatenedPiece = "Queen";
+                                eval += 35 * pieceMultiplier;
+                                break;
+                            case "Rook":
+                                if(!lowestThreatenedPiece.equals("Pawn")&&!lowestThreatenedPiece.equals("Knight")&&!lowestThreatenedPiece.equals("Bishop")) lowestThreatenedPiece = "Rook";
+                                eval += 25 * pieceMultiplier;
+                            case "Knight":
+                                if(!lowestThreatenedPiece.equals("Pawn")) lowestThreatenedPiece = "Knight";
+                                eval += 15 * pieceMultiplier ;
+                            case "Bishop":
+                                if(!lowestThreatenedPiece.equals("Pawn") && !lowestThreatenedPiece.equals("Knight")) lowestThreatenedPiece = "Bishop";
+                                eval += 25 * pieceMultiplier;
+                            case "King":
+                                eval += 30 * pieceMultiplier;
+                        }
+                        threats++;
+                    } else if(!p.type.equals("Pawn") && !p.protectedByPawn() && !p.defended()){
+                        // Piece that could be captured to win material
+                        switch(p.type){
+                            case "Queen":
+                                enemyQueenThreatened = true;
+                                if(!lowestThreatenedPiece.equals("Pawn")&&!lowestThreatenedPiece.equals("Rook")&&!lowestThreatenedPiece.equals("Knight")&&!lowestThreatenedPiece.equals("Bishop")) lowestThreatenedPiece = "Queen";
+
+                                eval += 35 * pieceMultiplier;
+                                break;
+                            case "Rook":
+                                if(!lowestThreatenedPiece.equals("Pawn")&&!lowestThreatenedPiece.equals("Knight")&&!lowestThreatenedPiece.equals("Bishop")) lowestThreatenedPiece = "Rook";
+                                eval += 25 * pieceMultiplier;
+                            case "Knight":
+                                if(!lowestThreatenedPiece.equals("Pawn")) lowestThreatenedPiece = "Knight";
+                                eval += 15 * pieceMultiplier;
+                            case "Bishop":
+                                if(!lowestThreatenedPiece.equals("Pawn") && !lowestThreatenedPiece.equals("Knight")) lowestThreatenedPiece = "Bishop";
+                                eval += 25 * pieceMultiplier;
+                            case "King":
+                                eval += 30 * pieceMultiplier;
+                        }
+                        threats++;
+                    } else if(p.type.equals("Pawn") && !p.protectedByPawn() && !p.defended()){
+                        eval += 4 * pieceMultiplier;
+                        threats++;
+                        lowestThreatenedPiece = "Pawn";
+                        // Pawn that could be captured
                     }
                 }
+            if(!p.type.equals("Bishop") && p.defenders.size() == 0 && ((p.color&&p.position/8>3) || (!p.color&&p.position/8<4))){
+                eval -= 15 * pieceMultiplier;
+                if(p.attackers.size() > 0) eval -= 15 * pieceMultiplier;
             }
-
-            // Count threats against this piece
 
 
             // Move count mobility bonus
+            if(analysisBoard.moves.size() <= 12 && (p.type.equals("Bishop")||p.type.equals("Knight")) && p.position == p.originalPosition) eval -= 15 * pieceMultiplier;
             eval += moves.size()*pieceMultiplier;
             eval += pieceValue*pieceMultiplier;
         }
-
-
-        switch(enemyThreats){
-            case 0:
-                break;
-            case 1:
-                eval *= 1.05;
-                break;
-            case 2:
-                eval *= 1.10;
-                break;
-            default:
-                eval *= 1.15;
-
+        if(highestThreatenedPiece != "") {
+            eval -= pieceValues.get(highestThreatenedPiece);
+            eval += highestThreatLoss;
         }
-        switch(friendlyThreats){
+
+
+        switch(threats){
             case 0:
                 break;
             case 1:
-                eval *= 1.00;
-                break;
-            case 2:
-                eval *= 1.033;
+                eval += 15 * (scoringFor?1:-1);
                 break;
             default:
-                eval *= 1.066;
-
+                eval += pieceValues.get(lowestThreatenedPiece)*(scoringFor?1:-1);
+                eval += 15 * threats * (scoringFor?1:-1);
         }
 
         return eval;
-    }
+        }
+
+
 
 
     // Filters a set of moves into a map divided by checks, captures, and threats.
@@ -401,13 +522,13 @@ public class SpringerAI {
             }
 
             // Threats
-            Set<Piece> projectors = m.piece().terminalProjectors(false, m.to());
+            Set<Piece> attackers = m.piece().attackers;
             boolean flag = false;
-            for(Piece p: projectors){
+            for(Piece p: attackers){
                 if(flag) break;
                 // N, B or P threatens Q or R
-                if((p.type.equals("Queen") || p.type.equals("Rook"))
-                        && (m.piece().type.equals("Knight") || m.piece().type.equals("Bishop") || m.piece().type.equals("Pawn"))){
+                if((m.piece().type.equals("Queen") || m.piece().type.equals("Rook"))
+                        && (p.type.equals("Knight") || p.type.equals("Bishop") || p.type.equals("Pawn"))){
                     map.get("Threats").add(m);
                     analysisBoard.undoPrimitiveMove(m, true);
                     flag = true; continue;
@@ -426,10 +547,4 @@ public class SpringerAI {
         return map;
     }
 
-    private int defense(Piece p){
-        Set<Piece> defenders = p.terminalProjectors(true, p.position);
-
-        // Remove pinned defenders
-        return 0;
-    }
 }

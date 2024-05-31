@@ -22,7 +22,7 @@ public class Chess {
 
         while(board.winner == null){
             printBoard();
-            System.out.println("Springer eval: "+sp.evaluate(null, false));
+            System.out.println("Springer eval: "+sp.getEval());
             if (board.sideToMove && board.kingW.inCheck()) text = "Check! " + text;
             System.out.print(text);
             s = in.nextLine();
@@ -241,6 +241,7 @@ public class Chess {
 
     public static void main(String[] args){
         Chess c = new Chess();
+        //c.startGameW();
         c.startGameSpringerAI();
         //c.startGameSpringerTest();
     }

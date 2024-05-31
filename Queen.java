@@ -10,8 +10,10 @@ public class Queen extends Piece {
         Projection p = new Projection(position, color, board);
         p.projectDiagonal(true); p.projectStraight(true);
         this.legalMoves  = p.moves();
-
         board.filterLegalMoves(legalMoves);
+
+        defenders = p.getDefenders();
+        attackers = p.getAttackers();
     }
     public String toString(){
         if(this.color){
