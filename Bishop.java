@@ -1,3 +1,4 @@
+import java.util.HashSet;
 import java.util.Set;
 
 public class Bishop extends Piece {
@@ -10,13 +11,20 @@ public class Bishop extends Piece {
     public void updateMoves() {
         Projection p = new Projection(position, color, board);
         p.projectDiagonal(true);
-        Set<Move> moves = p.moves();
-        board.filterLegalMoves(moves);
-        this.legalMoves = moves;
+        this.legalMoves = p.moves();
+        board.filterLegalMoves(legalMoves);
 
-        p.clear();
         defenders = p.getDefenders();
         attackers = p.getAttackers();
+
+        p.clear();
+        attacks = new HashSet<Piece>();
+        for(Move move: legalMoves){
+            if(move.capture() != null) attacks.add(move.capture());
+        }
+        p.projectDiagonal(false);
+        defends = p.getDefends();
+        p.clear();
 
     }
 //    public int calculateScope(){

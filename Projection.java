@@ -8,84 +8,86 @@ public class Projection {
     Board board;
 
     int origin;
-    boolean stop; // Stop projection once we hit a piece?
     boolean color; // Include the piece we stopped at?
     public Projection(int origin, boolean color, Board board){
         this.nodes = new HashSet<ProjectionNode>();
         this.board = board; this.origin = origin;
         this.color = color;
-        stop = true;
     }
     public Projection(int origin, boolean color, boolean stop, Board board){
         this.nodes = new HashSet<ProjectionNode>();
-        this.board = board; this.origin = origin; this.stop = stop;
+        this.board = board; this.origin = origin;
         this.color = color;
     }
 
 
-    public void projectStraight(boolean ignoreFriendly){
+    public void projectStraight(boolean attack){
         if(!board.validPosition(origin)) throw new IllegalArgumentException();
         if (board.get(origin) == null) return;
 
         // Go left
         for(int i=origin-1;i/8==origin/8;i--){
-            if(!board.validPosition(i) || (ignoreFriendly && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i)) break;
+            if(attack&&board.get(i)!=null&&(board.get(i).color==color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
-            if(stop&&board.get(i) != null) break;
+            if(attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
+            if(!attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
         }
         // Go right
         for(int i=origin+1;i/8==origin/8;i++){
-            if(!board.validPosition(i) || (ignoreFriendly && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i)) break;
+            if(attack&&board.get(i)!=null&&(board.get(i).color==color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
-            if(stop&&board.get(i) != null) break;
+            if(attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
+            if(!attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
         }
         // Go up
         for(int i=origin+8;i<=63;i+=8){
-            if(!board.validPosition(i) || (ignoreFriendly && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i)) break;
+            if(attack&&board.get(i)!=null&&(board.get(i).color==color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
-            if(stop&&board.get(i) != null) break;
+            if(attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
+            if(!attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
         }
         // Go down
         for(int i=origin-8;i>=0;i-=8){
-            if(!board.validPosition(i) || (ignoreFriendly && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i)) break;
+            if(attack&&board.get(i)!=null&&(board.get(i).color==color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
-            if(stop&&board.get(i) != null) break;
+            if(attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
+            if(!attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
         }
     }
-    public void projectDiagonal(boolean ignoreFriendly){
+    public void projectDiagonal(boolean attack){
         if(!board.validPosition(origin)) throw new IllegalArgumentException();
         if (board.get(origin) == null) return;
 
         // Down + left
         for(int i=origin-9;i>=0;i-=9){
             if(i%8 == 7 || (i%8)+1!=((i+9)%8)) break;
-            if(!board.validPosition(i) || (ignoreFriendly && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
-            if(stop&&board.get(i) != null) break;
         }
 
         // Down + right
         for(int i=origin-7;i>=0;i-=7){
             if(i%8 == 0 || (i%8)-1!=((i+7) %8)) break;
-            if(!board.validPosition(i) || (ignoreFriendly && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
-            if(stop&&board.get(i) != null) break;
         }
 
         // Up + left
         for(int i=origin+7;i<=63;i+=7){
             if(i%8==7 || (i%8)+1!=(i-7)%8) break;
-            if(!board.validPosition(i) || (ignoreFriendly && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
-            if(stop&&board.get(i) != null) break;
         }
 
         // Up + right
         for(int i=origin+9;i<=63;i+=9){
             if(i%8==0 || (i%8)-1!=(i-9)%8) break;
-            if(!board.validPosition(i) || (ignoreFriendly && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
-            if(stop&&board.get(i) != null) break;
         }
     }
 
@@ -102,7 +104,7 @@ public class Projection {
 
     public void projectPawnAttack(boolean ignoreFriendly){
         boolean color = board.get(origin).color;
-        int forward = color ? origin + 8 : origin - 8;
+        int forward = (color ? origin + 8 : origin - 8);
 
         int[] j = {forward + 1, forward - 1};
         for(int i: j){
@@ -143,6 +145,18 @@ public class Projection {
         }
     }
 
+
+    // Should be used after other projections to return all pieces defended
+    public Set<Piece> getDefends(){
+        Set<Piece> defends = new HashSet<Piece>();
+        for(ProjectionNode node: nodes){
+            if(node.dest != null && node.dest.color == color){
+                defends.add(node.dest);
+            }
+        }
+        return defends;
+    }
+
     public Set<Piece> getDefenders(){
         if(!board.validPosition(origin)) throw new IllegalArgumentException();
         if (board.get(origin) == null) throw new IllegalArgumentException();
@@ -157,28 +171,32 @@ public class Projection {
         // Down + left
         for(int i=origin-9;i>=0;i-=9){
             if(i%8 == 7 || (i%8)+1!=((i+9)%8)) break;
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color==color && !((board.get(i).type.equals("Bishop")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && ((!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")&&board.get(i).color!=color) || (board.get(i).color==color&&!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
         // Down + right
         for(int i=origin-7;i>=0;i-=7){
             if(i%8 == 0 || (i%8)-1!=((i+7) %8)) break;
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color==color && !((board.get(i).type.equals("Bishop")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && ((!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")&&board.get(i).color!=color) || (board.get(i).color==color&&!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
         // Up + left
         for(int i=origin+7;i<=63;i+=7){
             if(i%8==7 || (i%8)+1!=(i-7)%8) break;
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color==color && !((board.get(i).type.equals("Bishop")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && ((!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")&&board.get(i).color!=color) || (board.get(i).color==color&&!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
         // Up + right
         for(int i=origin+9;i<=63;i+=9){
             if(i%8==0 || (i%8)-1!=(i-9)%8) break;
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color==color && !((board.get(i).type.equals("Bishop")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && ((!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")&&board.get(i).color!=color) || (board.get(i).color==color&&!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
@@ -194,22 +212,26 @@ public class Projection {
         clear();
         // Go left
         for(int i=origin-1;i/8==origin/8;i--){
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color==color && !((board.get(i).type.equals("Rook")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && ((!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")&&board.get(i).color!=color) || (board.get(i).color==color&&!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
         // Go right
         for(int i=origin+1;i/8==origin/8;i++){
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color==color && !((board.get(i).type.equals("Rook")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && ((!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")&&board.get(i).color!=color) || (board.get(i).color==color&&!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
         // Go up
         for(int i=origin+8;i<=63;i+=8){
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color==color && !((board.get(i).type.equals("Rook")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && ((!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")&&board.get(i).color!=color) || (board.get(i).color==color&&!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
         // Go down
         for(int i=origin-8;i>=0;i-=8){
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color==color && !((board.get(i).type.equals("Rook")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && ((!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")&&board.get(i).color!=color) || (board.get(i).color==color&&!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
@@ -246,14 +268,14 @@ public class Projection {
         }
 
         // Pawns
-        int forward = color ? origin + 8 : origin - 8;
+        int forward = !color ? origin + 8 : origin - 8;
         if(board.validPosition(forward-1) && board.get(forward-1) != null && board.get(forward-1).type.equals("Pawn") && board.get(forward-1).color == color
-            && !((forward-1%8==7&&origin%8==0)||(forward-1%8==0&&origin%8==7))
+            && !(((forward-1)%8==7&&origin%8==0)||((forward-1)%8==0&&origin%8==7))
         ){
             defenders.add(board.get(forward-1));
         }
         if(board.validPosition(forward+1) && board.get(forward+1) != null && board.get(forward+1).type.equals("Pawn") && board.get(forward+1).color == color
-            && !((forward+1%8==7&&origin%8==0)||(forward+1%8==0&&origin%8==7))){
+            && !(((forward+1)%8==7&&origin%8==0)||((forward+1)%8==0&&origin%8==7))){
                 defenders.add(board.get(forward+1));
         }
 
@@ -271,28 +293,32 @@ public class Projection {
         // Down + left
         for(int i=origin-9;i>=0;i-=9){
             if(i%8 == 7 || (i%8)+1!=((i+9)%8)) break;
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color!=color && !((board.get(i).type.equals("Bishop")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && (board.get(i).color==color || (!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
         // Down + right
         for(int i=origin-7;i>=0;i-=7){
             if(i%8 == 0 || (i%8)-1!=((i+7) %8)) break;
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color!=color && !((board.get(i).type.equals("Bishop")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && (board.get(i).color==color || (!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
         // Up + left
         for(int i=origin+7;i<=63;i+=7){
             if(i%8==7 || (i%8)+1!=(i-7)%8) break;
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color!=color && !((board.get(i).type.equals("Bishop")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && (board.get(i).color==color || (!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
         // Up + right
         for(int i=origin+9;i<=63;i+=9){
             if(i%8==0 || (i%8)-1!=(i-9)%8) break;
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color!=color && !((board.get(i).type.equals("Bishop")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && (board.get(i).color==color || (!board.get(i).type.equals("Bishop")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
@@ -308,22 +334,26 @@ public class Projection {
         clear();
         // Go left
         for(int i=origin-1;i/8==origin/8;i--){
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color!=color && !((board.get(i).type.equals("Rook")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && (board.get(i).color==color || (!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
         // Go right
         for(int i=origin+1;i/8==origin/8;i++){
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color!=color && !((board.get(i).type.equals("Rook")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && (board.get(i).color==color || (!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
         // Go up
         for(int i=origin+8;i<=63;i+=8){
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color!=color && !((board.get(i).type.equals("Rook")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && (board.get(i).color==color || (!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
         // Go down
         for(int i=origin-8;i>=0;i-=8){
-            if(!board.validPosition(i) || (board.get(i) != null && board.get(i).color!=color && !((board.get(i).type.equals("Rook")) || (board.get(i).type.equals("Queen"))))) break;
+            if(!board.validPosition(i)) break;
+            if(board.get(i) != null && (board.get(i).color==color || (!board.get(i).type.equals("Rook")&&!board.get(i).type.equals("Queen")))) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
         }
 
@@ -372,15 +402,15 @@ public class Projection {
         int forward = color ? origin + 8 : origin - 8;
         if(board.validPosition(forward-1) && board.get(forward-1) != null && board.get(forward-1).type.equals("Pawn")
                 && board.get(forward-1).color != color
-                && !((forward-1%8==7&&origin%8==0)||(forward-1%8==0&&origin%8==7))
+                && !(((forward-1)%8==7&&origin%8==0)||((forward-1)%8==0&&origin%8==7))
         ){
             attackers.add(board.get(forward-1));
         }
         if(board.validPosition(forward+1) && board.get(forward+1) != null && board.get(forward+1).type.equals("Pawn")
                 && board.get(forward+1).color != color
-                && !((forward-1%8==7&&origin%8==0)||(forward-1%8==0&&origin%8==7))){
+                && !(((forward+1)%8==7&&origin%8==0)||((forward+1)%8==0&&origin%8==7))){
             attackers.add(board.get(forward+1));
-        }
+            }
 
         attackers.remove(board.get(origin));
 

@@ -17,8 +17,11 @@ public abstract class Piece {
     public Set<Piece> attacks;
     public Set<Piece> defends;
     public boolean pawnProtected;
+    public int eval;
+    public boolean captured;
 
     public Piece(boolean color, int position, Board board, String type){
+        this.captured = false;
         this.legalMoves = new HashSet<Move>();
         this.color = color;
         this.position = position;
@@ -30,10 +33,12 @@ public abstract class Piece {
         this.defenders = new HashSet<Piece>();
         this.attacks = new HashSet<Piece>();
         this.defends = new HashSet<Piece>();
+        this.eval = 0;
 
         board.addPiece(this);
     }
     public Piece(Piece piece, Board board){
+        this.captured = false;
         this.legalMoves = new HashSet<Move>();
         color=piece.color;
         position=piece.position;
@@ -45,11 +50,15 @@ public abstract class Piece {
         this.defenders = new HashSet<Piece>();
         this.attacks = new HashSet<Piece>();
         this.defends = new HashSet<Piece>();
+        this.eval = 0;
 
         board.addPiece(this);
     }
 
 
+    public void captured(){
+        this.captured = true;
+    }
 
     public boolean pawnProtected(){
         return pawnProtected;
@@ -63,11 +72,7 @@ public abstract class Piece {
         return legalMoves;
     }
 
-    public void captured(){
-//        board.pieces.removeIf(this::equals);
-//        board.whiteArmy.removeIf(this::equals);
-//        board.blackArmy.removeIf(this::equals);
-    }
+
 
     public int pawnProjections(Set<Piece> friendlyProjectors){
         int n = 0;
@@ -187,7 +192,18 @@ public abstract class Piece {
     }
 
     public String toStringDebug(){
-        return "{type: " + this.type + ", color: " + color + ", position: " + position + ", origin: " + originalPosition + " }";
+        return "{type: " + this.type + ", color: " + color + ", position: " + position + ", origin: " + originalPosition + ", defenders: " + defenders + ", attackers: " + attackers + ", eval: " + eval + "}";
+    }
+
+    public void printDebug(){
+        System.out.println("===============");
+        System.out.println("| type: " + this.type + "color: " + color + ", toString: " + toString());
+        System.out.println("| position: " + this.position + ", originalPosition: " + this.originalPosition);
+        System.out.println("| eval: " + this.eval);
+        System.out.println("| defenders: " + this.defenders);
+        System.out.println("| attackers: " + this.attackers);
+        System.out.println("| defends: " + this.defends);
+        System.out.println("| attacks: " + this.attacks);
     }
 
 

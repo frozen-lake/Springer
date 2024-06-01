@@ -1,7 +1,4 @@
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
 public class Chess {
     public Board board;
@@ -22,7 +19,10 @@ public class Chess {
 
         while(board.winner == null){
             printBoard();
+
             System.out.println("Springer eval: "+sp.getEval());
+            sp.debugPieces();
+
             if (board.sideToMove && board.kingW.inCheck()) text = "Check! " + text;
             System.out.print(text);
             s = in.nextLine();
@@ -238,6 +238,7 @@ public class Chess {
         if(board.sideToMove) board.printBoardW();
         if(!board.sideToMove) board.printBoardB();
     }
+
 
     public static void main(String[] args){
         Chess c = new Chess();

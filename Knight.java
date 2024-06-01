@@ -16,6 +16,15 @@ public class Knight extends Piece {
 
         defenders = p.getDefenders();
         attackers = p.getAttackers();
+
+        p.clear();
+        attacks = new HashSet<Piece>();
+        for(Move move: legalMoves){
+            if(move.capture() != null) attacks.add(move.capture());
+        }
+        p.projectKnight(false);
+        defends = p.getDefends();
+        p.clear();
     }
     public String toString(){
         return this.color ? "N" : "n";

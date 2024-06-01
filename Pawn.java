@@ -21,6 +21,15 @@ public class Pawn extends Piece {
         defenders = p.getDefenders();
         attackers = p.getAttackers();
 
+        p.clear();
+        attacks = new HashSet<Piece>();
+        for(Move move: legalMoves){
+            if(move.capture() != null) attacks.add(move.capture());
+        }
+        p.projectPawnAttack(false);
+        defends = p.getDefends();
+        p.clear();
+
         doubled = true;
         for (int i = position;board.validPosition(i);i += (color?8:-8)) {
             if (board.get(i) != null && board.get(i).type.equals("Pawn") && board.get(i).color==color) doubled = false;

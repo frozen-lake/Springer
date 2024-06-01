@@ -15,15 +15,7 @@ public class King extends Piece {
         Projection p = new Projection(position, color, board);
         p.projectKing(true);
         legalMoves = p.moves();
-        p.clear();
-//        int[] around = {position - 1, position + 1, position - 7, position + 7,
-//                position - 8, position + 8, position - 9, position + 9};
-//        Set<Move> moves = new HashSet<Move>();
-//        for(int j : around){
-//            if(board.validPosition(j) && (board.get(j)==null || (board.get(j).color != color))){
-//                moves.add(board.createMove(position, j));
-//            }
-//        }
+
         if(canCastleShort()) legalMoves.add(board.createMove(position, position + 2));
         if(canCastleLong()) legalMoves.add(board.createMove(position, position - 2));
 
@@ -31,6 +23,15 @@ public class King extends Piece {
 
         defenders = p.getDefenders();
         attackers = p.getAttackers();
+
+        p.clear();
+        attacks = new HashSet<Piece>();
+        for(Move move: legalMoves){
+            if(move.capture() != null) attacks.add(move.capture());
+        }
+        p.projectKing(false);
+        defends = p.getDefends();
+        p.clear();
     }
 
     public boolean inCheckmate(){

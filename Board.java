@@ -202,6 +202,7 @@ public class Board {
 
     // Performs a legal chess move on this board after validation. Also checks for checkmate.
     public void makeMove(Move m){
+        updateProperties();
         if(!validateMove(m)) {
             if (debugBoard){
                 printBoardW(); // Move m not a member of m.piece().getMoves()
@@ -253,6 +254,7 @@ public class Board {
         if(update) updateProperties();
     }
     protected void undoPrimitiveMove(Move m, boolean update){
+
         if(m.promotion() == null && get(m.to()) != m.piece()) {
             if(debugBoard){
                 printBoardW();
@@ -267,7 +269,10 @@ public class Board {
         set(m.to(), m.capture());
         set(m.from(), m.piece());
         m.piece().setPosition(m.from());
-        if(m.capture() != null) addPiece(m.capture());
+        if(m.capture() != null) {
+            addPiece(m.capture());
+            m.capture().captured = false;
+        }
         if(m.isFirstMove()) m.piece().hasMoved = false;
         winner = null;
 
