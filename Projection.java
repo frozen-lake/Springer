@@ -65,29 +65,37 @@ public class Projection {
         // Down + left
         for(int i=origin-9;i>=0;i-=9){
             if(i%8 == 7 || (i%8)+1!=((i+9)%8)) break;
-            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
+            if(attack && board.get(i) != null && board.get(i).color != color) break;
+            if(!attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
         }
 
         // Down + right
         for(int i=origin-7;i>=0;i-=7){
             if(i%8 == 0 || (i%8)-1!=((i+7) %8)) break;
-            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
+            if(attack && board.get(i) != null && board.get(i).color != color) break;
+            if(!attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
         }
 
         // Up + left
         for(int i=origin+7;i<=63;i+=7){
             if(i%8==7 || (i%8)+1!=(i-7)%8) break;
-            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
+            if(attack && board.get(i) != null && board.get(i).color != color) break;
+            if(!attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
         }
 
         // Up + right
         for(int i=origin+9;i<=63;i+=9){
             if(i%8==0 || (i%8)-1!=(i-9)%8) break;
-            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == board.get(origin).color)) break;
+            if(!board.validPosition(i) || (attack && board.get(i) != null && board.get(i).color == color)) break;
             nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
+            if(attack && board.get(i) != null && board.get(i).color != color) break;
+            if(!attack&&board.get(i)!=null&&(board.get(i).color!=color)) break;
         }
     }
 
@@ -96,19 +104,19 @@ public class Projection {
                 origin - 15, origin + 15, origin - 17, origin + 17};
         Set<Move> moves = new HashSet<Move>();
         for(int j : around){
-            if(board.validPosition(j) && (board.get(j) == null || !ignoreFriendly || board.get(j).color != board.get(origin).color) && !(origin % 8 <= 1 && j % 8 >= 6 || origin % 8 >= 6 && j % 8 <= 1)){
+            if(board.validPosition(j) && (board.get(j) == null || !ignoreFriendly || board.get(j).color != color) && !(origin % 8 <= 1 && j % 8 >= 6 || origin % 8 >= 6 && j % 8 <= 1)){
                 nodes.add(new ProjectionNode(board.get(origin), origin, j, board.get(j)));
             }
         }
     }
 
     public void projectPawnAttack(boolean ignoreFriendly){
-        boolean color = board.get(origin).color;
+        //boolean color = board.get(origin).color;
         int forward = (color ? origin + 8 : origin - 8);
 
         int[] j = {forward + 1, forward - 1};
         for(int i: j){
-            if(board.validPosition(i) && board.get(i)!=null&&(!ignoreFriendly || board.get(i).color != board.get(origin).color)
+            if(board.validPosition(i) && board.get(i)!=null&&(!ignoreFriendly || board.get(i).color != color)
                     && !((i%8==7&&origin%8==0)||(i%8==0&&origin%8==7)) ){
                 nodes.add(new ProjectionNode(board.get(origin), origin, i, board.get(i)));
             }
@@ -116,7 +124,7 @@ public class Projection {
     }
 
     public void projectPawnMove(){
-        boolean color = board.get(origin).color;
+        //boolean color = board.get(origin).color;
         int forward = color ? origin + 8 : origin - 8;
 
         if(board.validPosition(forward) && (board.get(forward) == null)){
@@ -137,7 +145,7 @@ public class Projection {
         int[] around = {origin - 1, origin + 1, origin - 7, origin + 7,
                 origin - 8, origin + 8, origin - 9, origin + 9};
         for(int j : around){
-            if((board.validPosition(j) && (board.get(j) == null || !ignoreFriendly || board.get(j).color != board.get(origin).color))
+            if((board.validPosition(j) && (board.get(j) == null || !ignoreFriendly || board.get(j).color != color))
             && !((origin%8==7&&j%8==0) || (origin%8==0&&j%8==7))
             ){
                 nodes.add(new ProjectionNode(board.get(origin), origin, j, board.get(j)));

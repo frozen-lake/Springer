@@ -1,5 +1,9 @@
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.NoSuchElementException;
+
 import static org.junit.Assert.*;
 public class testBoard {
 
@@ -40,5 +44,24 @@ public class testBoard {
         Chess c = new Chess();
         Board b = c.board;
         // WIP
+    }
+
+    @Test
+    public void testNullMove(){
+        InputStream sysin = System.in;
+        ByteArrayInputStream in = new ByteArrayInputStream("e2 e4\ne7 e5\nf1 c4\npass\n".getBytes());
+        System.setIn(in);
+
+        Chess c = new Chess();
+        Board b = c.board;
+        try{
+            c.startGameW();
+
+        } catch(NoSuchElementException ignored){
+            assertEquals(true, b.sideToMove);
+            assertNull(b.winner);
+            b.printBoardW();
+        }
+        System.setIn(System.in);
     }
 }

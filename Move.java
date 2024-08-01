@@ -1,4 +1,4 @@
-public class Move{
+public class Move implements Comparable<Move>{
     private Piece piece;
     private int from;
     private int to;
@@ -6,6 +6,18 @@ public class Move{
     private String castle;
     private String promotion;
     private boolean firstMove;
+
+    public Move(Object o){
+        if(o == null){
+            this.piece = null;
+            this.capture = null;
+            this.from = -1;
+            this.to = -1;
+            this.castle = null;
+            this.promotion = null;
+            this.firstMove = false;
+        }
+    }
     public Move(Piece piece, int from, int to, Piece capture, String castle, String promotion){
         this.piece = piece; this.capture = capture;
         this.from = from; this.to = to;
@@ -31,6 +43,26 @@ public class Move{
                 && ((m.capture()!=null && m.capture().equals(capture())) || (capture()==null&&m.capture()==null))
                 && ((m.castle() != null && m.castle().equals(castle())) || (m.castle()==null&&castle()==null))
                 && ((promotion==null&&m.promotion()==null) || (promotion != null && promotion.equals(m.promotion())));
+    }
+    public int compareTo(Move other){
+        Piece c = capture();
+        Piece oc = other.capture();
+        if(c != null){
+            if(oc == null) return 1;
+
+            // Both are captures, compare using MVV-LVA
+            if(c.value == oc.value){ // V=V
+                if(piece().value == other.piece().value) return 0; // V=V, A=A
+                return other.piece().value - piece().value;
+            } else if(c.value > oc.value){
+                return 1;
+            } else {
+                return -1;
+            }
+        } else {
+            if(oc != null) return -1;
+            return 0;
+        }
     }
     public String toString(){
         return piece.toString() + (capture!=null?"x"+capture:"") + (promotion!=null?"->"+promotion:"") + " | " + from + " -> " + to;

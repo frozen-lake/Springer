@@ -1,13 +1,11 @@
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 public abstract class Piece {
 
     public final boolean color;
     public final String type;
     protected int position;
+    public int value;
     protected final int originalPosition;
     protected boolean hasMoved;
     public final Board board;
@@ -35,6 +33,14 @@ public abstract class Piece {
         this.defends = new HashSet<Piece>();
         this.eval = 0;
 
+        switch (type) {
+            case "Pawn" -> value = 100;
+            case "Bishop", "Knight" -> value = 300;
+            case "Queen" -> value = 900;
+            case "Rook" -> value = 500;
+            case "King" -> value = 9999;
+        }
+
         board.addPiece(this);
     }
     public Piece(Piece piece, Board board){
@@ -51,6 +57,14 @@ public abstract class Piece {
         this.attacks = new HashSet<Piece>();
         this.defends = new HashSet<Piece>();
         this.eval = 0;
+
+        switch (type) {
+            case "Pawn" -> value = 100;
+            case "Bishop", "Knight" -> value = 300;
+            case "Queen" -> value = 900;
+            case "Rook" -> value = 500;
+            case "King" -> value = 9999;
+        }
 
         board.addPiece(this);
     }
@@ -186,7 +200,16 @@ public abstract class Piece {
         Piece p = (Piece) o;
         return type.equals(p.type) && color == p.color && position == p.position && board == p.board;
     }
+    public int compareTo(Piece other){
+        if(type.equals(other.type)) return 0;
+        if(type.equals("Pawn")) return -1;
+        if(type.equals("King")) return 1;
+        if(type.equals("Queen") && !other.type.equals("King")) return 1;
+        if(type.equals("Rook") && !other.type.equals("Queen") && !other.type.equals("King")) return 1;
+        if(type.equals("Knight") && !other.type.equals("Rook") && !other.type.equals("Queen") && !other.type.equals("King")) return 1;
 
+        return -1;
+    }
     public int hashCode(){
         return (color?344:-344) + (position*31) + (type.hashCode()) + 67;
     }

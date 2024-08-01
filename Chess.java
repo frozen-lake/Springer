@@ -21,11 +21,16 @@ public class Chess {
             printBoard();
 
             System.out.println("Springer eval: "+sp.getEval());
-            sp.debugPieces();
+            //sp.debugPieces();
 
             if (board.sideToMove && board.kingW.inCheck()) text = "Check! " + text;
             System.out.print(text);
             s = in.nextLine();
+            if(s.equals("pass")){
+                board.makeMove(board.generateNullMove());
+                text = board.sideToMove ? "White to move: " : "Black to move: ";
+                continue;
+            }
             if (s.equals("O-O") || s.equals("o-o")) {
                 // Kingside castles
                 King playerKing = board.sideToMove ? board.kingW : board.kingB;

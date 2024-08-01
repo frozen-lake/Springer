@@ -32,7 +32,7 @@ public class Rook extends Piece {
     // Returns true if there is a horizontal or vertical line from this rook to the other with no king between.
 
     public boolean orthogonalNoKing(){
-        if(otherRook.captured) return false;
+        if(otherRook == null || otherRook.captured) return false;
         King k = color?board.kingW:board.kingB;
         if(position/8 == otherRook.position/8){
             if(k.position/8 == position/8){
@@ -52,7 +52,7 @@ public class Rook extends Piece {
     }
 
     public boolean orthogonal(){
-        if(otherRook.captured) return false;
+        if(otherRook == null || otherRook.captured) return false;
         return position/8 != otherRook.position/8 && position%8 != otherRook.position%8;
 
     }
@@ -73,7 +73,7 @@ public class Rook extends Piece {
         return true;
     }
     public boolean connected(){
-
+        if(otherRook == null) return false;
         if(position/8 == otherRook.position/8){
             if(position%8 < otherRook.position%8){
                 for(int i=position+1;i%8<otherRook.position%8;i++){

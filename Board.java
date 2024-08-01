@@ -41,6 +41,10 @@ public class Board {
         for(int i=0;i<b.moves.size();i++){
             // Piece at corresponding original position
             Move m = b.moves.get(i);
+            if(m.piece() == null) {
+                ms.add(generateNullMove());
+                continue;
+            }
             Piece p = get(m.piece().originalPosition);
             Piece capture = m.capture() == null ? null : get(m.capture().originalPosition);
 
@@ -70,7 +74,10 @@ public class Board {
         Piece p;
         for(int i=0;i<=63;i++){
             p = get(i);
-            if(p != null) set.add(p);
+            if(p != null){
+                set.add(p);
+                p.setPosition(i);
+            }
         }
         pieces = set;
     }
@@ -122,6 +129,11 @@ public class Board {
         set(p.getPosition(), p);
     }
 
+    public Move generateNullMove(){
+        Move m = new Move(null);
+        return m;
+    }
+
     // Returns the piece at location pos, or null if there is no piece.
     public Piece get(int pos){
         if(!validPosition(pos)) {
@@ -148,7 +160,7 @@ public class Board {
         Iterator<Move> iter = moves.iterator();
         while(iter.hasNext()){
             Move move = iter.next();
-            if(move.capture() != null && move.capture().color == move.piece().color){
+            if(move.capture() != null && (move.capture().color == move.piece().color || move.capture().type.equals("King"))){
                 iter.remove();
             }
         }
@@ -171,7 +183,8 @@ public class Board {
 
     // Returns true if the passed move is within the relevant piece's dataset.
     public boolean validateMove(Move m){
-        if(m.piece() == null || m.piece().position != m.from()
+        if(m.piece() == null) return true;
+        if(m.piece().position != m.from()
                 || !validPosition(m.from()) || !validPosition(m.to())
         ){
             return false;
@@ -207,9 +220,7 @@ public class Board {
             if (debugBoard){
                 printBoardW(); // Move m not a member of m.piece().getMoves()
                 System.out.println("makeMove() call debug: Move being tried: " + m);
-                System.out.println(get(61).getMoves().contains(m));
-                System.out.println(m.capture().toStringDebug() + " | " );
-                System.out.println("Possible moves for " + m.piece() + ": " + m.piece().getMoves());
+                System.out.println(get(53));
                 System.out.println("Moves: " + moves);
             }
             throw new IllegalArgumentException();
@@ -217,7 +228,7 @@ public class Board {
 
         primitiveMove(m, true);
 
-        checkCheckmate(!m.piece().color?kingW:kingB);
+        checkCheckmate(sideToMove?kingW:kingB);
     }
 
     public void undoMove(Move m){
@@ -230,32 +241,37 @@ public class Board {
     protected void primitiveMove(Move m, boolean update){
         moves.add(m);
         sideToMove = !sideToMove;
-        if(m.castle() != null){
-            if(m.castle().equals("K")){
-                ((King) m.piece()).castleShort();
-                if(m.isFirstMove()) m.piece().hasMoved = true;
-                get(m.to() - 1).hasMoved = true;
-            } else if(m.castle().equals("Q")){
-                ((King) m.piece()).castleLong();
-                if(m.isFirstMove()) m.piece().hasMoved = true;
-                get(m.to() + 1).hasMoved = true;
-            }
-        } else {
-            set(m.to(), m.piece());
-            set(m.from(), null);
-            m.piece().setPosition(m.to());
-            if(m.capture() != null) m.capture().captured();
-            if(m.isFirstMove()) m.piece().hasMoved = true;
+        if(m.piece() != null) {
+            if (m.castle() != null) {
+                if (m.castle().equals("K")) {
+                    ((King) m.piece()).castleShort();
+                    if (m.isFirstMove()) m.piece().hasMoved = true;
+                    get(m.to() - 1).hasMoved = true;
+                } else if (m.castle().equals("Q")) {
+                    ((King) m.piece()).castleLong();
+                    if (m.isFirstMove()) m.piece().hasMoved = true;
+                    get(m.to() + 1).hasMoved = true;
+                }
+            } else {
+                set(m.to(), m.piece());
+                set(m.from(), null);
+                m.piece().setPosition(m.to());
+                if (m.capture() != null) m.capture().captured();
+                if (m.isFirstMove()) m.piece().hasMoved = true;
 
-            if(m.promotion() != null){
-                ((Pawn) m.piece()).promote(m.promotion());
+                if (m.promotion() != null) {
+                    ((Pawn) m.piece()).promote(m.promotion());
+                }
+            }
+            if (m.piece().position != m.to()) {
+                throw new IllegalStateException();
             }
         }
         if(update) updateProperties();
     }
     protected void undoPrimitiveMove(Move m, boolean update){
 
-        if(m.promotion() == null && get(m.to()) != m.piece()) {
+        if(m.piece() != null && m.promotion() == null && get(m.to()) != m.piece()) {
             if(debugBoard){
                 printBoardW();
                 System.out.println("===" + m + " | " + m.from() + ", piece: " + m.piece().toStringDebug());
@@ -264,32 +280,34 @@ public class Board {
         }
         if(winner != null) winner = null;
         sideToMove = !sideToMove;
-
         moves.removeLast();
-        set(m.to(), m.capture());
-        set(m.from(), m.piece());
-        m.piece().setPosition(m.from());
-        if(m.capture() != null) {
-            addPiece(m.capture());
-            m.capture().captured = false;
-        }
-        if(m.isFirstMove()) m.piece().hasMoved = false;
-        winner = null;
 
-        // Rook
-        if(m.castle()!=null) {
-            ((King) m.piece()).castled = null;
+        if(m.piece()!=null) { // not null move
+            set(m.to(), m.capture());
+            set(m.from(), m.piece());
+            m.piece().setPosition(m.from());
+            if (m.capture() != null) {
+                addPiece(m.capture());
+                m.capture().captured = false;
+            }
+            if (m.isFirstMove()) m.piece().hasMoved = false;
+            winner = null;
 
-            if (m.castle().equals("K")) {
-                set(m.to() + 1, get(m.to() - 1));
-                set(m.to() - 1, null);
-                get(m.to() + 1).setPosition(m.to() + 1);
-                get(m.to() + 1).hasMoved = false;
-            } else if (m.castle().equals("Q")){
-                set(m.to() - 2, get(m.to() + 1));
-                set(m.to() + 1, null);
-                get(m.to() - 2).setPosition(m.to() - 2);
-                get(m.to() - 2).hasMoved = false;
+            // Rook
+            if (m.castle() != null) {
+                ((King) m.piece()).castled = null;
+
+                if (m.castle().equals("K")) {
+                    set(m.to() + 1, get(m.to() - 1));
+                    set(m.to() - 1, null);
+                    get(m.to() + 1).setPosition(m.to() + 1);
+                    get(m.to() + 1).hasMoved = false;
+                } else if (m.castle().equals("Q")) {
+                    set(m.to() - 2, get(m.to() + 1));
+                    set(m.to() + 1, null);
+                    get(m.to() - 2).setPosition(m.to() - 2);
+                    get(m.to() - 2).hasMoved = false;
+                }
             }
         }
         if(update) updateProperties();
@@ -303,6 +321,7 @@ public class Board {
         // Generate new set of all pieces, white pieces, black pieces.
         // Tell every piece to update its local properties.
         for(Piece p: pieces){
+            if(p.board != this) throw new IllegalStateException();
             p.updateMoves();
         }
     }
@@ -527,4 +546,7 @@ public class Board {
         }
         return true;
     }
+//    public int hashCode(){
+//        return 0;
+//    }
 }
