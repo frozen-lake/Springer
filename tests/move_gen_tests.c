@@ -140,10 +140,30 @@ int test_generate_pawn_moves_en_passant(){
     return success;
 }
 
+int test_generate_pawn_moves_no_double_from_non_start(){
+    Game* game = create_game();
+
+    char* fen = "4k3/8/8/8/8/3P4/8/4K3 w - - 0 1";
+    int success = load_fen(game, fen);
+
+    MoveList generated_moves;
+    MoveList expected_moves;
+    move_list_init(&generated_moves);
+    move_list_init(&expected_moves);
+
+    move_list_add(&expected_moves, D3 | (D4 << 6) | (Pawn << 12));
+
+    generate_pawn_moves(&generated_moves, game, White);
+    success = success && compare_generated_moves(&expected_moves, &generated_moves);
+
+    destroy_game(game);
+    return success;
+}
+
 int test_generate_king_moves(){
     Game* game = create_game();
 
-    char* fen = "4k3/1p6/4p3/5p2/2N5/8/PPP1PPPP/R3K2R";
+    char* fen = "4k3/1p6/4p3/5p2/2N5/8/PPP1PPPP/R3K2R w KQ - 0 1";
     int success = load_fen(game, fen);
 
     MoveList generated_moves;
@@ -157,6 +177,18 @@ int test_generate_king_moves(){
     move_list_add(&expected_moves, E1 | (C1 << 6) | (King << 12) | (Queenside << 21));
     move_list_add(&expected_moves, E1 | (G1 << 6) | (King << 12) | (Kingside << 21));
 
+    generate_king_moves(&generated_moves, game, White);
+    success = success && compare_generated_moves(&expected_moves, &generated_moves);
+
+    move_list_init(&generated_moves);
+    move_list_init(&expected_moves);
+
+    success = success && load_fen(game, "4r3/8/8/8/8/8/8/R3K2R w KQ - 0 1");
+    move_list_add(&expected_moves, E1 | (D1 << 6) | (King << 12));
+    move_list_add(&expected_moves, E1 | (D2 << 6) | (King << 12));
+    move_list_add(&expected_moves, E1 | (E2 << 6) | (King << 12));
+    move_list_add(&expected_moves, E1 | (F2 << 6) | (King << 12));
+    move_list_add(&expected_moves, E1 | (F1 << 6) | (King << 12));
     generate_king_moves(&generated_moves, game, White);
     success = success && compare_generated_moves(&expected_moves, &generated_moves);
 
@@ -201,7 +233,7 @@ int test_generate_legal_moves(){
 }
 
 int move_gen_tests(){
-    int num_tests = 8;
+    int num_tests = 9;
 
 	int (*test_cases[num_tests])();
 	char* test_case_names[num_tests];
@@ -212,8 +244,9 @@ int move_gen_tests(){
     test_cases[3] = test_generate_knight_moves;
     test_cases[4] = test_generate_pawn_moves;
     test_cases[5] = test_generate_pawn_moves_en_passant;
-    test_cases[6] = test_generate_king_moves;
-    test_cases[7] = test_generate_legal_moves;
+    test_cases[6] = test_generate_pawn_moves_no_double_from_non_start;
+    test_cases[7] = test_generate_king_moves;
+    test_cases[8] = test_generate_legal_moves;
 
 	test_case_names[0] = "test_encode_move";
 	test_case_names[1] = "test_encode_move_capture";
@@ -221,8 +254,9 @@ int move_gen_tests(){
 	test_case_names[3] = "test_generate_knight_moves";
 	test_case_names[4] = "test_generate_pawn_moves";
 	test_case_names[5] = "test_generate_pawn_moves_en_passant";
-	test_case_names[6] = "test_generate_king_moves";
-	test_case_names[7] = "test_generate_legal_moves";
+    test_case_names[6] = "test_generate_pawn_moves_no_double_from_non_start";
+    test_case_names[7] = "test_generate_king_moves";
+    test_case_names[8] = "test_generate_legal_moves";
 
     return run_tests(test_cases, test_case_names, num_tests);
 }
