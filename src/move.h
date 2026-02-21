@@ -24,7 +24,7 @@ typedef uint32_t Move;
  * 3 bits - moved piece
  * 3 bits - captured piece
  * 3 bits - promotion: (0=No promotion, 1=Knight, 2=Bishop, 3=Rook, 4=Queen)
- * 1 bit - en passant
+ * 2 bits - special: (0=None, 1=EnPassant, 2=Kingside, 3=Queenside)
 */
 
 

@@ -37,8 +37,6 @@ extern AttackData attack_data;
 
 uint64_t occupancy_table_lookup(int index, int occupancy_key);
 
-/* Set board attack_to and attack_from based on occupancy and attack range */
-
 uint64_t generate_row_occupancy_key(int row, uint64_t occupancy);
 uint64_t generate_col_occupancy_key(int col, uint64_t occupancy);
 uint64_t generate_ruld_occupancy_key(int col, uint64_t occupancy);
