@@ -6,6 +6,7 @@
 #include "game.h"
 
 ZobristKeys zobrist_keys;
+static int zobrist_keys_initialized = 0;
 
 /* Initialize a Board with the starting position. */
 void initialize_board(Board* board){
@@ -32,10 +33,12 @@ uint64_t random_u64(void){
 	return result;
 }
 
-void initialize_zobrist(Game* game){
-	srand(1234567);
-	BoardState* state = &game->state;
+void initialize_zobrist_keys(void){
+	if(zobrist_keys_initialized){
+		return;
+	}
 
+	srand(1234567);
 	for(int color=0; color<2; color++){
 		for(int piece=0; piece<6; piece++){
 			for(int square=0; square<64; square++){
@@ -51,32 +54,50 @@ void initialize_zobrist(Game* game){
 		zobrist_keys.en_passant_file[i] = random_u64();
 	}
 	zobrist_keys.side_to_move = random_u64();
+	zobrist_keys_initialized = 1;
+}
 
+uint64_t compute_zobrist_hash(BoardState* state){
+	if(state == NULL){
+		return 0;
+	}
 
-	/* */
-	state->zobrist_hash = 0;
-
+	uint64_t hash = 0;
 	uint64_t occupied = state->pieces[White] | state->pieces[Black];
 	while(occupied){
 		int src = get_lsb_index(occupied);
-        occupied &= occupied - 1;
+		occupied &= occupied - 1;
 		uint8_t color = !!(state->pieces[White] & U64_MASK(src));
 		int piece = position_to_piece_number(state, src);
-		int piece_index = piece - Pawn;
-		state->zobrist_hash ^= zobrist_keys.piece_square[color][piece_index][src];
-	}
-	state->zobrist_hash ^= zobrist_keys.castling_rights[state->castling_rights];
-	if(state->en_passant != -1) {
-		state->zobrist_hash ^= zobrist_keys.en_passant_file[state->en_passant % 8];
-	}
-	if(!state->side_to_move){
-		state->zobrist_hash ^= zobrist_keys.side_to_move;
+		if(piece >= Pawn && piece <= King){
+			int piece_index = piece - Pawn;
+			hash ^= zobrist_keys.piece_square[color][piece_index][src];
+		}
 	}
 
+	hash ^= zobrist_keys.castling_rights[state->castling_rights];
+	if(state->en_passant != -1) {
+		hash ^= zobrist_keys.en_passant_file[state->en_passant % 8];
+	}
+	if(!state->side_to_move){
+		hash ^= zobrist_keys.side_to_move;
+	}
+
+	state->zobrist_hash = hash;
+	return hash;
+}
+
+void initialize_zobrist(Game* game){
+	if(game == NULL){
+		return;
+	}
+
+	initialize_zobrist_keys();
+	compute_zobrist_hash(&game->state);
 }
 
 
-/* Prints the board state. */
+/* Prints the board. */
 void print_board(Board* board){
 	for(int i=7;i>=0;i--){
 		printf("| %c", position_to_piece_char(board, i*8));
@@ -88,7 +109,7 @@ void print_board(Board* board){
 	printf("=================================\n");
 }
 
-/* Removes all pieces from the Board and clears the attack bitboards. */
+/* Zeroes out the pieces array in the given BoardState */
 void empty_board(Board* board){
 	board->pieces[Black] = board->pieces[White] = board->pieces[Pawn] = board->pieces[Knight] = board->pieces[Bishop] = board->pieces[Rook] = board->pieces[Queen] = board->pieces[King] = 0;
 }
@@ -116,7 +137,7 @@ char position_to_piece_char(Board* board, int pos){
 	if(board->pieces[Queen] & mask) c = 'q';
 	if(board->pieces[King] & mask) c = 'k';
 	if(board->pieces[White] & mask) c = toupper(c);
-	return c; // No piece on this square
+	return c;
 }
 
 int position_to_piece_number(Board* board, int pos){
@@ -127,7 +148,7 @@ int position_to_piece_number(Board* board, int pos){
 	if(board->pieces[Rook] & mask) return Rook;
 	if(board->pieces[Queen] & mask) return Queen;
 	if(board->pieces[King] & mask) return King;
-	return 0; // value for no piece
+	return 0;
 }
 
 int square_attacked(Board* board, int square, int attacker_color){

@@ -64,6 +64,8 @@ void initialize_game(Game* game){
 	game->state.en_passant = -1;
 	game->state.halfmove_clock = 0;
 	game->game_ply = 0;
+	initialize_zobrist_keys();
+	compute_zobrist_hash(&game->state);
 	move_list_init(&game->legal_moves);
 	generate_legal_moves(game, game->state.side_to_move);
 }

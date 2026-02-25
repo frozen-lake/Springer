@@ -73,6 +73,8 @@ void print_board(Board* board);
 
 int board_validate(Board* board);
 
+void initialize_zobrist_keys(void);
+uint64_t compute_zobrist_hash(BoardState* state);
 void initialize_zobrist(Game* game);
 
 void print_bitboard(uint64_t bb);
