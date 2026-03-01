@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "tests.h"
 #include "../src/transposition_table.h"
 

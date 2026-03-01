@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <stddef.h>
 #include "game.h"
 #include "board.h"
 #include "move.h"
