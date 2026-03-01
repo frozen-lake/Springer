@@ -13,6 +13,15 @@ enum Special {
 };
 
 
+// Must be same order as Piece enum in board.h: knight, bishop, rook, queen
+enum Promotion {
+    NO_PROMOTION,
+    KNIGHT_PROMOTION,
+    BISHOP_PROMOTION,
+    ROOK_PROMOTION,
+    QUEEN_PROMOTION
+};
+
 #define MAX_MOVES 256
 
 typedef uint32_t Move;
@@ -68,4 +77,4 @@ void move_list_add(MoveList* move_list, Move move);
 void move_list_copy(MoveList* src, MoveList* dest);
 
 Move encode_move(int src, int dest, Board* board);
-Move encode_promotion(int src, int dest, Board* board, int promotion);
+Move encode_promotion(int src, int dest, Board* board, enum Promotion promotion);

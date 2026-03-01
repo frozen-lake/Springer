@@ -300,7 +300,7 @@ Move encode_move(int src, int dest, Board* board){
     return move;
 }
 
-Move encode_promotion(int src, int dest, Board* board, int promotion){
+Move encode_promotion(int src, int dest, Board* board, enum Promotion promotion){
     return encode_move(src, dest, board) | (promotion << 18);
 }
 

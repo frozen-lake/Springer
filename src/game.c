@@ -239,6 +239,7 @@ void make_move(Game* game, Move move){
 	generate_legal_moves(game, game->state.side_to_move);
 }
 
+
 void unmake_move(Game* game, Move move){
 	if(game->game_ply <= 0){
 		return;
@@ -256,6 +257,10 @@ void make_move_on_state(BoardState* state, Move move, UndoInfo* undo){
 	int piece_type = get_move_piece(move);
 	int capture = get_move_capture(move);
 	int special = get_move_special(move);
+	int promotion = get_move_promotion(move);
+
+	int promotion_piece = promotion != NO_PROMOTION ? Pawn + promotion : 0;
+	int moving_piece = (piece_type == Pawn && promotion_piece) ? promotion_piece : piece_type; // Final piece on dest square
 
 	undo->castling_rights = state->castling_rights;
 	undo->en_passant = state->en_passant;
@@ -267,8 +272,9 @@ void make_move_on_state(BoardState* state, Move move, UndoInfo* undo){
 	}
 
 	int piece_index = piece_type - Pawn;
+	int moving_piece_index = moving_piece - Pawn;
 	state->zobrist_hash ^= zobrist_keys.piece_square[color][piece_index][src];
-	state->zobrist_hash ^= zobrist_keys.piece_square[color][piece_index][dest];
+	state->zobrist_hash ^= zobrist_keys.piece_square[color][moving_piece_index][dest];
 	if(capture){
 		int capture_index = capture - Pawn;
 		state->zobrist_hash ^= zobrist_keys.piece_square[!color][capture_index][capture_square];
@@ -304,15 +310,10 @@ void make_move_on_state(BoardState* state, Move move, UndoInfo* undo){
 	}
 
 	state->pieces[piece_type] &= ~U64_MASK(src);
-	state->pieces[piece_type] |= U64_MASK(dest);
+	state->pieces[moving_piece] |= U64_MASK(dest);
 
-	if(color){
-		state->pieces[White] &= ~U64_MASK(src);
-		state->pieces[White] |= U64_MASK(dest);
-	} else {
-		state->pieces[Black] &= ~U64_MASK(src);
-		state->pieces[Black] |= U64_MASK(dest);
-	}
+	state->pieces[color] &= ~U64_MASK(src);
+	state->pieces[color] |= U64_MASK(dest);
 
 	if(special > EnPassant){
 		int rook_src = (special == Kingside) ? src + 3 : src - 4;
@@ -369,6 +370,10 @@ void unmake_move_on_state(BoardState* state, Move move, UndoInfo* undo){
 	int piece_type = get_move_piece(move);
 	int capture = get_move_capture(move);
 	int special = get_move_special(move);
+	int promotion = get_move_promotion(move);
+
+	int promotion_piece = promotion != NO_PROMOTION ? Pawn + promotion : 0;
+	int moving_piece = (piece_type == Pawn && promotion_piece) ? promotion_piece : piece_type;
 
 	state->side_to_move = !state->side_to_move;
 	int color = state->side_to_move;
@@ -383,16 +388,16 @@ void unmake_move_on_state(BoardState* state, Move move, UndoInfo* undo){
 	state->halfmove_clock = undo->halfmove_clock;
 	state->zobrist_hash = undo->zobrist_hash;
 
-	state->pieces[piece_type] &= ~U64_MASK(dest);
+	if(piece_type == Pawn && promotion_piece){
+		state->pieces[moving_piece] &= ~U64_MASK(dest);
+	} else {
+		state->pieces[piece_type] &= ~U64_MASK(dest);
+	}
+
 	state->pieces[piece_type] |= U64_MASK(src);
 
-	if(color){
-		state->pieces[White] &= ~U64_MASK(dest);
-		state->pieces[White] |= U64_MASK(src);
-	} else {
-		state->pieces[Black] &= ~U64_MASK(dest);
-		state->pieces[Black] |= U64_MASK(src);
-	}
+	state->pieces[color] &= ~U64_MASK(dest);
+	state->pieces[color] |= U64_MASK(src);
 
 	if(special > EnPassant){
 		int rook_src = (special == Kingside) ? src + 3 : src - 4;
@@ -409,11 +414,7 @@ void unmake_move_on_state(BoardState* state, Move move, UndoInfo* undo){
 
 	if(capture){
 		state->pieces[capture] |= U64_MASK(capture_square);
-		if(color){
-			state->pieces[Black] |= U64_MASK(capture_square);
-		} else {
-			state->pieces[White] |= U64_MASK(capture_square);
-		}
+		state->pieces[!color] |= U64_MASK(capture_square);
 	}
 }
 

@@ -2,6 +2,13 @@
 #include "game.h"
 
 
+void add_promotions(MoveList* move_list, int src, int dest, Board* state){
+    move_list_add(move_list, encode_promotion(src, dest, state, KNIGHT_PROMOTION));
+    move_list_add(move_list, encode_promotion(src, dest, state, BISHOP_PROMOTION));
+    move_list_add(move_list, encode_promotion(src, dest, state, ROOK_PROMOTION));
+    move_list_add(move_list, encode_promotion(src, dest, state, QUEEN_PROMOTION)); 
+}
+
 void generate_moves_from_bitboard(int src, uint64_t attack, MoveList* move_list, Game* game, int color){
     Board* board = &game->state;
     while(attack){
@@ -69,8 +76,6 @@ void generate_pawn_moves(MoveList* move_list, Game* game, int color){
     uint64_t occupancy = board->pieces[White] | board->pieces[Black];
 
 
-
-
     while(pawns) {
         int src = get_lsb_index(pawns);
         pawns &= pawns - 1;
@@ -80,21 +85,34 @@ void generate_pawn_moves(MoveList* move_list, Game* game, int color){
         int forward = color?src+8:src-8;
         int double_forward = color?src+16:src-16;
         int is_start_rank = color ? ((src / 8) == 1) : ((src / 8) == 6);
+        int promotion_rank = color ? 7 : 0;
 
         /* Captures */
         if((src % 8 > 0) && (U64_MASK(left_capture) & board->pieces[!color])){
-            Move move = encode_move(src, left_capture, &game->state);
-            move_list_add(move_list, move);
+            if((left_capture / 8) == promotion_rank){
+                add_promotions(move_list, src, left_capture, &game->state);
+            } else {
+                Move move = encode_move(src, left_capture, &game->state);
+                move_list_add(move_list, move);
+            }
         }
         if((src % 8 < 7) && (U64_MASK(right_capture) & board->pieces[!color])){
-            Move move = encode_move(src, right_capture, &game->state);
-            move_list_add(move_list, move);
+            if((right_capture / 8) == promotion_rank){
+                add_promotions(move_list, src, right_capture, &game->state);
+            } else {
+                Move move = encode_move(src, right_capture, &game->state);
+                move_list_add(move_list, move);
+            }
         }
 
         /* Forward moves */
         if(!(U64_MASK(forward) & occupancy)){
-            Move move = encode_move(src, forward, &game->state);
-            move_list_add(move_list, move);
+            if((forward / 8) == promotion_rank){
+                add_promotions(move_list, src, forward, &game->state);
+            } else {
+                Move move = encode_move(src, forward, &game->state);
+                move_list_add(move_list, move);
+            }
 
             /* Double forward */
             if(is_start_rank && !(U64_MASK(double_forward) & occupancy)){
