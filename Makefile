@@ -27,12 +27,12 @@ $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
 # Link
-springer_tests.exe: $(TEST_OBJ_FILES) $(SRC_OBJ_FILES)
+springer_tests: $(TEST_OBJ_FILES) $(SRC_OBJ_FILES)
 	$(CC) -o $@ $^
 
-springer.exe: $(GAME_OBJ_FILES)
+springer: $(GAME_OBJ_FILES)
 	$(CC) -o $@ $^
 
 # Clean
 clean:
-	rm -rf $(OBJ_DIR) springer_tests.exe springer.exe
+	rm -rf $(OBJ_DIR) springer_tests springer
