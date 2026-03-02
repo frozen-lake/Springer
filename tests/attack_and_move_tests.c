@@ -51,6 +51,25 @@ int test_parse_algebraic_move(){
 	return success;
 }
 
+int test_parse_algebraic_move_promotion(){
+	Game* game = create_game();
+
+	int success = load_fen(game, "4k3/8/8/8/8/8/1p6/R3K3 b - - 0 1");
+	Move bxa1q = parse_algebraic_move("bxa1=Q", game);
+	Move expected_bxa1q = encode_promotion(B2, A1, &game->state, QUEEN_PROMOTION);
+	success = success && (bxa1q == expected_bxa1q);
+	success = success && is_legal_player_move(game, bxa1q);
+
+	success = success && load_fen(game, "k7/3P4/8/8/8/8/8/4K3 w - - 0 1");
+	Move d8 = parse_algebraic_move("d8", game);
+	Move expected_d8_base = encode_move(D7, D8, &game->state);
+	success = success && (d8 == expected_d8_base);
+	success = success && !is_legal_player_move(game, d8);
+
+	destroy_game(game);
+	return success;
+}
+
 
 int test_populate_rook_attack(){
 	/* Test single square rook attack population */
@@ -218,22 +237,24 @@ int test_d3_illegal_repro(){
 }
 
 int move_tests(){
-	int num_tests = 5;
+	int num_tests = 6;
 
-	int (*test_cases[5])();
-	char* test_case_names[5];
+	int (*test_cases[6])();
+	char* test_case_names[6];
 
 	test_cases[0] = test_parse_square;
 	test_cases[1] = test_find_source_square;
 	test_cases[2] = test_find_source_square2;
 	test_cases[3] = test_parse_algebraic_move;
 	test_cases[4] = test_d3_illegal_repro;
+	test_cases[5] = test_parse_algebraic_move_promotion;
 
 	test_case_names[0] = "test_parse_square";
 	test_case_names[1] = "test_find_source_square";
 	test_case_names[2] = "test_find_source_square2";
 	test_case_names[3] = "test_parse_algebraic_move";
 	test_case_names[4] = "test_d3_illegal_repro";
+	test_case_names[5] = "test_parse_algebraic_move_promotion";
 
     return run_tests(test_cases, test_case_names, num_tests);
 

@@ -143,10 +143,33 @@ int find_source_square(Board *board, char piece, int destination, char file_hint
 int parse_algebraic_move(char* input, Game* game) {
     Board* board = &game->state;
     int color = game->state.side_to_move;
+    int input_len = (int)strlen(input);
     char piece = 'P'; // Default to pawn
     char file_hint = '\0';
     int rank_hint = -1;
     char destination_square[3] = {0};
+    enum Promotion requested_promotion = NO_PROMOTION;
+    int move_len = input_len;
+
+    if(input_len >= 4 && input[input_len - 2] == '='){
+        switch(toupper(input[input_len - 1])){
+            case 'N':
+                requested_promotion = KNIGHT_PROMOTION;
+                break;
+            case 'B':
+                requested_promotion = BISHOP_PROMOTION;
+                break;
+            case 'R':
+                requested_promotion = ROOK_PROMOTION;
+                break;
+            case 'Q':
+                requested_promotion = QUEEN_PROMOTION;
+                break;
+            default:
+                return -1;
+        }
+        move_len = input_len - 2;
+    }
 
     if(input[0] == 'O' || input[0] == 'o'){
         uint64_t king = board->pieces[King] & game->state.pieces[game->state.side_to_move];
@@ -159,12 +182,13 @@ int parse_algebraic_move(char* input, Game* game) {
     }
 
     /* Try pawn capture notation first (e.g. bxa3). If legal, use it; else fall through. */
-    if(strlen(input) == 4
+    if(move_len == 4
         && strchr("abcdefgh", input[0])
         && input[1] == 'x'
         && strchr("abcdefgh", input[2])
         && (input[3] >= '1' && input[3] <= '8')){
-        int destination = parse_square(&input[2]);
+        char capture_square[3] = { input[2], input[3], '\0' };
+        int destination = parse_square(capture_square);
         if(destination >= 0){
             int src = input[0] - 97; // Column
             if(color){ // Row
@@ -179,6 +203,14 @@ int parse_algebraic_move(char* input, Game* game) {
                     pawn_move = encode_move(src, destination, board);
                 } else {
                     pawn_move = src | (destination << 6) | (Pawn << 12) | (Pawn << 15) | (EnPassant << 21);
+                }
+
+                if(requested_promotion != NO_PROMOTION){
+                    int promotion_rank = color ? 7 : 0;
+                    if((destination / 8) != promotion_rank || game->state.en_passant == destination){
+                        return -1;
+                    }
+                    pawn_move = encode_promotion(src, destination, board, requested_promotion);
                 }
 
                 if(is_legal_player_move(game, pawn_move)){
@@ -240,7 +272,16 @@ int parse_algebraic_move(char* input, Game* game) {
         return -1;
     }
 
-    return encode_move(src, destination, board); // Return the encoded move
+    Move move = encode_move(src, destination, board);
+    if(requested_promotion != NO_PROMOTION){
+        int promotion_rank = color ? 7 : 0;
+        if(get_move_piece(move) != Pawn || (destination / 8) != promotion_rank){
+            return -1;
+        }
+        move = encode_promotion(src, destination, board, requested_promotion);
+    }
+
+    return move; // Return the encoded move
 }
 
 void print_move(Move move){
