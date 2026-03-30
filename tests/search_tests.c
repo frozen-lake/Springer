@@ -19,7 +19,8 @@ int test_initialize_searchstate_defaults_and_clamp(){
     success = success && (state.root_depth == 0);
     success = success && (state.max_depth == MAX_SEARCH_PLY);
     success = success && (state.stop == &stop);
-    success = success && (state.pv_length == 0);
+    success = success && (state.pv_lengths[0] == 0);
+    success = success && (state.pv_table[0][0] == 0);
 
     success = success && initialize_searchstate(&state, NULL, MAX_SEARCH_PLY + 10, &stop);
     success = success && (state.max_depth == MAX_SEARCH_PLY);
@@ -40,13 +41,15 @@ int test_reset_searchstate(){
 
     state.nodes = 123;
     state.root_depth = 5;
-    state.pv_length = 3;
+    state.pv_lengths[0] = 3;
+    state.pv_table[0][0] = 1;
 
     reset_searchstate(&state);
 
     int success = (state.nodes == 0);
     success = success && (state.root_depth == 0);
-    success = success && (state.pv_length == 0);
+    success = success && (state.pv_lengths[0] == 0);
+    success = success && (state.pv_table[0][0] == 0);
     success = success && (state.max_depth == 8);
 
     return success;

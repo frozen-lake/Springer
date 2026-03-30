@@ -19,6 +19,8 @@ struct SearchTrace {
     int pv_length;
     Move root_moves[MAX_MOVES];
     int root_scores[MAX_MOVES];
+    Move root_pvs[MAX_MOVES][MAX_SEARCH_PLY];
+    int root_pv_lengths[MAX_MOVES];
     int num_root_moves;
 };
 
@@ -29,8 +31,8 @@ struct SearchState {
     int root_depth;
     int max_depth;
     int* stop;
-    Move pv_line[MAX_SEARCH_PLY];
-    int pv_length;
+    Move pv_table[MAX_SEARCH_PLY][MAX_SEARCH_PLY];
+    int pv_lengths[MAX_SEARCH_PLY];
 };
 
 Move search_best_move(Game* game, SearchState* search_state);

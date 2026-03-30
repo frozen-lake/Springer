@@ -14,6 +14,70 @@ int get_move_capture(Move move){ return (move >> 15) & 0b111; }
 int get_move_promotion(Move move){ return (move >> 18) & 0b111; }
 int get_move_special(Move move){ return (move >> 21) & 0b11; }
 
+int move_to_simplified_algebraic(Move move, char* out, size_t out_size){
+    if(out == NULL || out_size < 8 || move == 0){
+        return 0;
+    }
+
+    int src = get_move_src(move);
+    int dest = get_move_dest(move);
+    int piece = get_move_piece(move);
+    int special = get_move_special(move);
+    int capture = (get_move_capture(move) != 0) || (special == EnPassant);
+    int promotion = get_move_promotion(move);
+    char dest_file = (char)('a' + (dest % 8));
+    char dest_rank = (char)('1' + (dest / 8));
+    char src_file = (char)('a' + (src % 8));
+    char piece_letter = '\0';
+    char promo = '\0';
+
+    if(special == Kingside){
+        return snprintf(out, out_size, "O-O") > 0;
+    }
+    if(special == Queenside){
+        return snprintf(out, out_size, "O-O-O") > 0;
+    }
+
+    switch(piece){
+        case Knight: piece_letter = 'N'; break;
+        case Bishop: piece_letter = 'B'; break;
+        case Rook: piece_letter = 'R'; break;
+        case Queen: piece_letter = 'Q'; break;
+        case King: piece_letter = 'K'; break;
+        case Pawn: piece_letter = '\0'; break;
+        default: return 0;
+    }
+
+    if(promotion != NO_PROMOTION){
+        switch(promotion){
+            case KNIGHT_PROMOTION: promo = 'N'; break;
+            case BISHOP_PROMOTION: promo = 'B'; break;
+            case ROOK_PROMOTION: promo = 'R'; break;
+            case QUEEN_PROMOTION: promo = 'Q'; break;
+            default: return 0;
+        }
+    }
+
+    if(piece == Pawn){
+        if(capture){
+            if(promo != '\0'){
+                return snprintf(out, out_size, "%cx%c%c=%c", src_file, dest_file, dest_rank, promo) > 0;
+            }
+            return snprintf(out, out_size, "%cx%c%c", src_file, dest_file, dest_rank) > 0;
+        }
+
+        if(promo != '\0'){
+            return snprintf(out, out_size, "%c%c=%c", dest_file, dest_rank, promo) > 0;
+        }
+        return snprintf(out, out_size, "%c%c", dest_file, dest_rank) > 0;
+    }
+
+    if(capture){
+        return snprintf(out, out_size, "%cx%c%c", piece_letter, dest_file, dest_rank) > 0;
+    }
+    return snprintf(out, out_size, "%c%c%c", piece_letter, dest_file, dest_rank) > 0;
+}
+
 int move_to_algebraic(Game* game, Move move, char* out, int out_size){
     int i = 0;
     int src = get_move_src(move);

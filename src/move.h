@@ -72,6 +72,7 @@ int parse_algebraic_move(char* input, Game* game);
 void print_move(Move move);
 void print_moves(MoveList* move_list);
 int move_to_algebraic(Game* game, Move move, char* out, int out_size);
+int move_to_simplified_algebraic(Move move, char* out, size_t out_size);
 
 
 void move_list_init(MoveList* move_list);
