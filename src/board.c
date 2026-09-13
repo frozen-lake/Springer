@@ -25,36 +25,35 @@ void initialize_board(Board* board){
 	board->king_sq[Black] = E8;
 }
 
-uint64_t random_u64(void){
-	uint64_t result = 0;
-	result = rand();
-	for(int i=0;i<4;i++){
-		result = (result << 15) | rand();
-	}
-	return result;
+uint64_t splitmix64(uint64_t* state){
+	*state += UINT64_C(0x9E3779B97F4A7C15);
+	uint64_t z = *state;
+	z = (z ^ (z >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
+	z = (z ^ (z >> 27)) * UINT64_C(0x94D049BB133111EB);
+	return z ^ (z >> 31);
 }
 
-void initialize_zobrist_keys(void){
+void initialize_zobrist_keys(){
 	if(zobrist_keys_initialized){
 		return;
 	}
+	uint64_t state = UINT64_C(1234567);
 
-	srand(1234567);
 	for(int color=0; color<2; color++){
 		for(int piece=0; piece<6; piece++){
 			for(int square=0; square<64; square++){
-				zobrist_keys.piece_square[color][piece][square] = random_u64();
+				zobrist_keys.piece_square[color][piece][square] = splitmix64(&state);
 			}
 		}
 	}
 
 	for(int i=0; i<16; i++){
-		zobrist_keys.castling_rights[i] = random_u64();
+		zobrist_keys.castling_rights[i] = splitmix64(&state);
 	}
 	for(int i=0; i<8; i++){
-		zobrist_keys.en_passant_file[i] = random_u64();
+		zobrist_keys.en_passant_file[i] = splitmix64(&state);
 	}
-	zobrist_keys.side_to_move = random_u64();
+	zobrist_keys.side_to_move = splitmix64(&state);
 	zobrist_keys_initialized = 1;
 }
 
