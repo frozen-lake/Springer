@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <stddef.h>
+#include <limits.h>
 #include "game.h"
 #include "board.h"
 #include "move.h"
@@ -76,132 +77,170 @@ void initialize_game(Game* game){
 	generate_legal_moves(game, game->state.side_to_move);
 }
 
-/* Load a position from a FEN String (Forsyth-Edwards Notation.) */
-int load_fen(Game* game, char* str){
-	Board* board = &game->state;
-	empty_board(board);
-
-	// Split up FEN by spaces
-	char fen[128];
-	if(str == NULL){
+static int parse_unsigned_field(const char* field, unsigned long maximum, unsigned long* value){
+	if(field == NULL || field[0] == '\0' || value == NULL){
 		return 0;
 	}
+
+	unsigned long parsed = 0;
+	for(size_t i = 0; field[i] != '\0'; i++){
+		if(!isdigit((unsigned char)field[i])){
+			return 0;
+		}
+		unsigned int digit = (unsigned int)(field[i] - '0');
+		if(parsed > (maximum - digit) / 10){
+			return 0;
+		}
+		parsed = parsed * 10 + digit;
+	}
+
+	*value = parsed;
+	return 1;
+}
+
+/* Load a position from a FEN String (Forsyth-Edwards Notation.) */
+int load_fen(Game* game, char* str){
+	if(game == NULL || str == NULL){
+		return 0;
+	}
+
+	char fen[128];
 	if(snprintf(fen, sizeof(fen), "%s", str) >= (int)sizeof(fen)){
 		return 0;
 	}
-	char* delim = " ";
 
-	char* fen_field[6] = {NULL};
-	fen_field[0] = strtok(fen, delim);
-	
-	for(int i=1; i<6 && fen_field[i-1]!=NULL; i++){
-		fen_field[i] = strtok(NULL, delim);
+	char* fields[7] = {NULL};
+	int field_count = 0;
+	char* field = strtok(fen, " \t\r\n");
+	while(field != NULL && field_count < 7){
+		fields[field_count++] = field;
+		field = strtok(NULL, " \t\r\n");
+	}
+	if(field != NULL || field_count != 6){
+		return 0;
 	}
 
-	if(fen_field[1]){
-		game->state.side_to_move = (fen_field[1][0] == 'b') ? 0 : 1;
+	BoardState parsed_state;
+	empty_board(&parsed_state);
+	Board* board = &parsed_state;
+
+	if(strcmp(fields[1], "w") == 0){
+		board->side_to_move = White;
+	} else if(strcmp(fields[1], "b") == 0){
+		board->side_to_move = Black;
+	} else {
+		return 0;
 	}
-	
-	// Split field 0 into ranks by '/' 
-	if(fen_field[0] == NULL){ return 0; }
-	
-	char* ranks[8];
-	delim = "/";
-	ranks[0] = strtok(fen, delim);
-    if(ranks[0] == NULL){ return 0; }	
-	for(int i=1;i<8;i++){
-		ranks[i] = strtok(NULL, delim);
-		if(ranks[i] == NULL){ return 0; };
-	}		
-	
-	// Process ranks
-	for(int rank=7;rank>=0;rank--){
-		int len = strlen(ranks[7-rank]);
-		int file = 0;
-		for(int j=0;j<len;j++){
-			if(file > 7){ return 0; } // Additional space or pieces after capacity is reached
-			char c = ranks[7 - rank][j];
 
-			if(isdigit(c)){
-				int p = (int) (c - '0');
-				if(file + p > 8){
-					return 0;
-				}
-				file += p;
-			} else if(isalpha(c)){
-				uint64_t piece = 1ULL << (rank*8 + file);
-				char u = toupper(c);
-				switch(u){
-					case 'P':
-						board->pieces[Pawn] |= piece;
-						break;
-					case 'N':
-						board->pieces[Knight] |= piece;
-						break;
-					case 'B':
-						board->pieces[Bishop] |= piece;
-						break;
-					case 'R':
-						board->pieces[Rook] |= piece;
-						break;
-					case 'Q':
-						board->pieces[Queen] |= piece;
-						break;
-					case 'K':
-						board->pieces[King] |= piece;
-						board->king_sq[isupper(c) ? White : Black] = (rank*8 + file);
-						break;
-					default:
-						return 0;
-				}
-
-				if(isupper(c)){
-					board->pieces[White] |= piece;
-				} else {
-					board->pieces[Black] |= piece;
-				}
-				file++;
-			} else {
+	const char* placement = fields[0];
+	int rank = 7;
+	int file = 0;
+	int white_king_count = 0;
+	int black_king_count = 0;
+	for(size_t i = 0; ; i++){
+		char c = placement[i];
+		if(c == '/' || c == '\0'){
+			if(file != 8 || rank == 0 && c == '/'){
 				return 0;
 			}
-		}
-		
-	}	
-	
-	game->state.castling_rights = 0;
-	if(fen_field[2] && fen_field[2][0] != '-'){
-		int k = 0;
-		while(fen_field[2][k] != '\0'){
-			switch(fen_field[2][k]){
-				case 'Q':
-					game->state.castling_rights |= (1 << 3);
-					break;
-				case 'K':
-					game->state.castling_rights |= (1 << 2);
-					break;
-				case 'q':
-					game->state.castling_rights |= (1 << 1);
-					break;
-				case 'k':
-					game->state.castling_rights |= (1 << 0);
-					break;
+			if(c == '\0'){
+				break;
 			}
-			k++;
+			rank--;
+			file = 0;
+			continue;
+		}
+
+		if(rank < 0 || file >= 8){
+			return 0;
+		}
+
+		if(c >= '1' && c <= '8'){
+			file += c - '0';
+			if(file > 8){
+				return 0;
+			}
+			continue;
+		}
+
+		char piece = (char)toupper((unsigned char)c);
+		int piece_type;
+		switch(piece){
+			case 'P': piece_type = Pawn; break;
+			case 'N': piece_type = Knight; break;
+			case 'B': piece_type = Bishop; break;
+			case 'R': piece_type = Rook; break;
+			case 'Q': piece_type = Queen; break;
+			case 'K': piece_type = King; break;
+			default: return 0;
+		}
+
+		if(file >= 8){
+			return 0;
+		}
+		uint64_t piece_mask = U64_MASK(rank * 8 + file);
+		board->pieces[piece_type] |= piece_mask;
+		int color = isupper((unsigned char)c) ? White : Black;
+		board->pieces[color] |= piece_mask;
+		if(piece_type == King){
+			board->king_sq[color] = (int8_t)(rank * 8 + file);
+			if(color == White){
+				white_king_count++;
+			} else {
+				black_king_count++;
+			}
+		}
+		file++;
+	}
+
+	if(rank != 0 || white_king_count > 1 || black_king_count > 1){
+		return 0;
+	}
+
+	if(strcmp(fields[2], "-") != 0){
+		if(fields[2][0] == '\0'){
+			return 0;
+		}
+		for(size_t i = 0; fields[2][i] != '\0'; i++){
+			uint8_t right;
+			switch(fields[2][i]){
+				case 'Q': right = 1 << 3; break;
+				case 'K': right = 1 << 2; break;
+				case 'q': right = 1 << 1; break;
+				case 'k': right = 1 << 0; break;
+				default: return 0;
+			}
+			if(board->castling_rights & right){
+				return 0;
+			}
+			board->castling_rights |= right;
 		}
 	}
 
-	if(fen_field[3] && fen_field[3][0] != '-'){
-		game->state.en_passant = parse_square(fen_field[3]);
+	if(strcmp(fields[3], "-") != 0){
+		board->en_passant = (int8_t)parse_square(fields[3]);
+		if(board->en_passant < 0
+			|| (board->side_to_move == White && board->en_passant / 8 != 5)
+			|| (board->side_to_move == Black && board->en_passant / 8 != 2)){
+			return 0;
+		}
 	}
 
-	game->state.halfmove_clock = 0;
-	if(fen_field[4]){
-		game->state.halfmove_clock = atoi(fen_field[4]);
+	unsigned long halfmove_clock;
+	unsigned long fullmove_number;
+	if(!parse_unsigned_field(fields[4], UINT8_MAX, &halfmove_clock)
+		|| !parse_unsigned_field(fields[5], ULONG_MAX, &fullmove_number)
+		|| fullmove_number == 0){
+		return 0;
 	}
+	board->halfmove_clock = (uint8_t)halfmove_clock;
+
+	initialize_zobrist_keys();
+	compute_zobrist_hash(board);
+	game->state = parsed_state;
 	game->game_ply = 0;
-
-	initialize_zobrist(game);
-
+	game->game_status = ACTIVE;
+	move_list_init(&game->legal_moves);
 	generate_legal_moves(game, game->state.side_to_move);
 
 	return 1;
