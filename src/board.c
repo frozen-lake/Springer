@@ -11,6 +11,10 @@ static int zobrist_keys_initialized = 0;
 
 /* Initialize a Board with the starting position. */
 void initialize_board(Board* board){
+	if(board == NULL){
+		return;
+	}
+
 	board->pieces[Black] = 0xFFFFULL << 48;
 	board->pieces[White] = 0xFFFFULL;
 
@@ -23,6 +27,11 @@ void initialize_board(Board* board){
 
 	board->king_sq[White] = E1;
 	board->king_sq[Black] = E8;
+	board->zobrist_hash = 0;
+	board->en_passant = -1;
+	board->castling_rights = 0b1111;
+	board->halfmove_clock = 0;
+	board->side_to_move = White;
 }
 
 uint64_t splitmix64(uint64_t* state){
@@ -111,7 +120,18 @@ void print_board(Board* board){
 
 /* Zeroes out the pieces array in the given BoardState */
 void empty_board(Board* board){
+	if(board == NULL){
+		return;
+	}
+
 	board->pieces[Black] = board->pieces[White] = board->pieces[Pawn] = board->pieces[Knight] = board->pieces[Bishop] = board->pieces[Rook] = board->pieces[Queen] = board->pieces[King] = 0;
+	board->zobrist_hash = 0;
+	board->king_sq[White] = -1;
+	board->king_sq[Black] = -1;
+	board->en_passant = -1;
+	board->castling_rights = 0;
+	board->halfmove_clock = 0;
+	board->side_to_move = White;
 }
 
 /* Prints the passed bitboard in an 8x8 format. */

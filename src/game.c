@@ -59,12 +59,17 @@ void destroy_game(Game* game){
 
 /* Set the Board. */
 void initialize_game(Game* game){
+	if(game == NULL){
+		return;
+	}
+
 	initialize_board(&game->state);
 	game->state.side_to_move = 1;
 	game->state.castling_rights = 0b1111;
 	game->state.en_passant = -1;
 	game->state.halfmove_clock = 0;
 	game->game_ply = 0;
+	game->game_status = ACTIVE;
 	initialize_zobrist_keys();
 	compute_zobrist_hash(&game->state);
 	move_list_init(&game->legal_moves);
