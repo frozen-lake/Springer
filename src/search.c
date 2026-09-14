@@ -334,7 +334,68 @@ int evaluate(Game* game){
 }
 
 int quiesce(SearchState* search_state, Game* game, int alpha, int beta){
-    return evaluate(game);
+    if(game == NULL){
+        return 0;
+    }
+
+    if(search_state != NULL){
+        search_state->nodes += 1;
+    }
+    if(is_search_stop_requested(search_state)){
+        return evaluate(game);
+    }
+
+    int color = game->state.side_to_move;
+    int in_check = square_attacked(&game->state,
+        game->state.king_sq[color], !color);
+
+    MoveList moves;
+    generate_all_moves(&moves, game, color);
+    filter_legal_moves(&moves, game);
+    order_moves(&moves, game);
+
+    if(moves.size == 0){
+        return in_check ? -MATE_SCORE : 0;
+    }
+
+    int best = -INF;
+    if(!in_check){
+        best = evaluate(game);
+        if(best >= beta){
+            return best;
+        }
+        if(best > alpha){
+            alpha = best;
+        }
+    }
+
+    for(int i = 0; i < moves.size; i++){
+        Move move = moves.moves[i];
+        int is_tactical = get_move_capture(move) != 0
+            || get_move_promotion(move) != NO_PROMOTION;
+        if(!in_check && !is_tactical){
+            continue;
+        }
+        UndoInfo undo;
+        make_move_on_state(&game->state, move, &undo);
+        int score = -quiesce(search_state, game, -beta, -alpha);
+        unmake_move_on_state(&game->state, move, &undo);
+
+        if(score > best){
+            best = score;
+        }
+        if(score > alpha){
+            alpha = score;
+        }
+        if(alpha >= beta){
+            break;
+        }
+        if(is_search_stop_requested(search_state)){
+            break;
+        }
+    }
+
+    return best;
 }
 
 int alpha_beta(SearchState* search_state, Game* game, int alpha, int beta, int depth_remaining, int ply){
