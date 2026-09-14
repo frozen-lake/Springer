@@ -126,9 +126,13 @@ void generate_pawn_moves(MoveList* move_list, Game* game, int color){
             int capture_square = color ? game->state.en_passant - 8 : game->state.en_passant + 8;
             int captures_pawn = (board->pieces[Pawn] & board->pieces[!color]
                 & U64_MASK(capture_square)) != 0;
-            if(captures_pawn
-                && ((color && ((game->state.en_passant == src+7) || (game->state.en_passant == src+9)))
-                || (!color && ((game->state.en_passant == src-7) || (game->state.en_passant == src-9))))){
+            int captures_left = color
+                ? src % 8 > 0 && game->state.en_passant == src + 7
+                : src % 8 > 0 && game->state.en_passant == src - 9;
+            int captures_right = color
+                ? src % 8 < 7 && game->state.en_passant == src + 9
+                : src % 8 < 7 && game->state.en_passant == src - 7;
+            if(captures_pawn && (captures_left || captures_right)){
                     Move move = src | (game->state.en_passant << 6) | (Pawn << 12) | (Pawn << 15) | (1 << 21);
                     move_list_add(move_list, move);
              }

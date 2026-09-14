@@ -6,6 +6,8 @@
 #include "endgame_tests.h"
 #include "search_tests.h"
 #include "transposition_table_tests.h"
+#include "perft_tests.h"
+#include "quiescence_tests.h"
 #include "../src/game.h"
 #include "../src/move.h"
 #include "../src/attack_data.h"
@@ -188,6 +190,94 @@ int test_promotion_round_trip(){
 	return success;
 }
 
+int test_long_game_round_trip(){
+	static const char* move_text[] = {
+		"e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6",
+		"O-O", "Be7", "Re1", "b5", "Bb3", "d6", "c3", "O-O",
+		"h3", "Nb8", "d4", "Nbd7"
+	};
+	Game* game = create_game();
+	if(game == NULL){
+		return 0;
+	}
+	initialize_game(game);
+
+	BoardState state_before = game->state;
+	MoveList legal_moves_before = game->legal_moves;
+	Move moves[20];
+	int success = 1;
+	int made_moves = 0;
+
+	for(int i = 0; i < 20; i++){
+		moves[i] = parse_algebraic_move((char*)move_text[i], game);
+		if(moves[i] == 0 || !is_legal_player_move(game, moves[i])){
+			fprintf(stderr, "long round-trip rejected move %d: %s\n", i, move_text[i]);
+			success = 0;
+			break;
+		}
+		make_move(game, moves[i]);
+		made_moves++;
+	}
+
+	for(int i = made_moves - 1; i >= 0; i--){
+		unmake_move(game, moves[i]);
+	}
+
+	success = success && game->game_ply == 0;
+	success = success && memcmp(&state_before, &game->state, sizeof(state_before)) == 0;
+	success = success && legal_moves_before.size == game->legal_moves.size;
+	if(success){
+		for(int i = 0; i < legal_moves_before.size; i++){
+			success = success && legal_moves_before.moves[i] == game->legal_moves.moves[i];
+		}
+	}
+
+	destroy_game(game);
+	return success;
+}
+
+int test_special_move_round_trip(){
+	const char* castling_fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
+	const char* en_passant_fen = "4k3/8/3p4/4P3/8/8/8/4K3 w - d6 0 1";
+	Game* game = create_game();
+	if(game == NULL){
+		return 0;
+	}
+
+	int success = load_fen(game, (char*)castling_fen);
+	BoardState castling_state = game->state;
+	MoveList castling_moves = game->legal_moves;
+	Move castling = parse_algebraic_move("O-O", game);
+	success = success && castling != 0 && is_legal_player_move(game, castling);
+	make_move(game, castling);
+	unmake_move(game, castling);
+	success = success && memcmp(&castling_state, &game->state, sizeof(castling_state)) == 0;
+	success = success && castling_moves.size == game->legal_moves.size;
+	if(success){
+		for(int i = 0; i < castling_moves.size; i++){
+			success = success && castling_moves.moves[i] == game->legal_moves.moves[i];
+		}
+	}
+
+	success = success && load_fen(game, (char*)en_passant_fen);
+	BoardState en_passant_state = game->state;
+	MoveList en_passant_moves = game->legal_moves;
+	Move en_passant = parse_algebraic_move("exd6", game);
+	success = success && en_passant != 0 && is_legal_player_move(game, en_passant);
+	make_move(game, en_passant);
+	unmake_move(game, en_passant);
+	success = success && memcmp(&en_passant_state, &game->state, sizeof(en_passant_state)) == 0;
+	success = success && en_passant_moves.size == game->legal_moves.size;
+	if(success){
+		for(int i = 0; i < en_passant_moves.size; i++){
+			success = success && en_passant_moves.moves[i] == game->legal_moves.moves[i];
+		}
+	}
+
+	destroy_game(game);
+	return success;
+}
+
 int test_dummy(){
 	return 1;
 }
@@ -210,7 +300,7 @@ int main(){
 	initialize_attack_data();
 
 
-	int num_tests = 7;
+	int num_tests = 9;
 
 	int (*test_cases[num_tests])(); // array of function pointers
 	char* test_case_names[num_tests];
@@ -222,6 +312,8 @@ int main(){
 	test_cases[4] = test_unmake_move_round_trip;
 	test_cases[5] = test_load_fen_invalid;
 	test_cases[6] = test_promotion_round_trip;
+	test_cases[7] = test_long_game_round_trip;
+	test_cases[8] = test_special_move_round_trip;
 
 	test_case_names[0] = "test_load_fen";
 	test_case_names[1] = "test_make_move";
@@ -230,6 +322,8 @@ int main(){
 	test_case_names[4] = "test_unmake_move_round_trip";
 	test_case_names[5] = "test_load_fen_invalid";
 	test_case_names[6] = "test_promotion_round_trip";
+	test_case_names[7] = "test_long_game_round_trip";
+	test_case_names[8] = "test_special_move_round_trip";
 
 	
 	printf("====== GAME TESTS ======\n");
@@ -252,6 +346,12 @@ int main(){
 
 	printf("====== TRANSPOSITION TABLE TESTS ======\n");
 	success = transposition_table_tests() && success;
+
+	printf("====== PERFT TESTS ======\n");
+	success = perft_tests() && success;
+
+	printf("====== QUIESCENCE TESTS ======\n");
+	success = quiescence_tests() && success;
 
 	printf("======\n");
 	return success ? 0 : 1;

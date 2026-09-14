@@ -5,7 +5,7 @@ SRC_DIR = src
 TEST_DIR = tests
 
 SRC_FILES = $(SRC_DIR)/board.c $(SRC_DIR)/game.c $(SRC_DIR)/move.c $(SRC_DIR)/attack_data.c $(SRC_DIR)/move_gen.c $(SRC_DIR)/search.c $(SRC_DIR)/transposition_table.c
-TEST_FILES = $(TEST_DIR)/attack_and_move_tests.c $(TEST_DIR)/move_gen_tests.c $(TEST_DIR)/tests.c $(TEST_DIR)/endgame_tests.c $(TEST_DIR)/search_tests.c $(TEST_DIR)/transposition_table_tests.c
+TEST_FILES = $(TEST_DIR)/attack_and_move_tests.c $(TEST_DIR)/move_gen_tests.c $(TEST_DIR)/tests.c $(TEST_DIR)/endgame_tests.c $(TEST_DIR)/search_tests.c $(TEST_DIR)/transposition_table_tests.c $(TEST_DIR)/perft_tests.c $(TEST_DIR)/quiescence_tests.c
 
 # notdir removes directory prefix, patsubst adds obj file directory and replaces .c with .o
 SRC_OBJ_FILES = $(patsubst %.c, $(OBJ_DIR)/%.o, $(notdir $(SRC_FILES)))
@@ -35,4 +35,4 @@ springer: $(GAME_OBJ_FILES)
 
 # Clean
 clean:
-	rm -rf $(OBJ_DIR) springer_tests springer
+	rm -rf $(OBJ_DIR) springer_tests springer springer_tests.exe springer.exe
