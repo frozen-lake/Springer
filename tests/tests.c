@@ -278,6 +278,68 @@ int test_special_move_round_trip(){
 	return success;
 }
 
+static int play_repetition_cycle(Game* game, Move moves[4]){
+	static const char* move_text[] = {"Na3", "Nh6", "Nb1", "Ng8"};
+	for(int i = 0; i < 4; i++){
+		moves[i] = parse_algebraic_move((char*)move_text[i], game);
+		if(moves[i] == 0 || !is_legal_player_move(game, moves[i])){
+			return 0;
+		}
+		make_move(game, moves[i]);
+	}
+	return 1;
+}
+
+int test_threefold_repetition(){
+	Game* game = create_game();
+	if(game == NULL || !load_fen(game, "6nk/8/8/8/8/8/8/KN6 w - - 0 1")){
+		destroy_game(game);
+		return 0;
+	}
+
+	Move first_cycle[4];
+	Move second_cycle[4];
+	int success = !is_threefold_repetition(game);
+	success = success && play_repetition_cycle(game, first_cycle);
+	success = success && !is_threefold_repetition(game);
+	success = success && play_repetition_cycle(game, second_cycle);
+	success = success && is_threefold_repetition(game);
+	update_game_status(game);
+	success = success && game->game_status == DRAW_THREEFOLD_REPETITION;
+
+	destroy_game(game);
+	return success;
+}
+
+int test_unmake_discards_repetition_history(){
+	Game* game = create_game();
+	if(game == NULL || !load_fen(game, "6nk/8/8/8/8/8/8/KN6 w - - 0 1")){
+		destroy_game(game);
+		return 0;
+	}
+
+	uint64_t initial_hash = game->state.zobrist_hash;
+	Move first_cycle[4];
+	Move second_cycle[4];
+	int success = play_repetition_cycle(game, first_cycle);
+	success = success && play_repetition_cycle(game, second_cycle);
+	success = success && is_threefold_repetition(game);
+
+	for(int i = 3; i >= 0; i--){
+		unmake_move(game, second_cycle[i]);
+	}
+	for(int i = 3; i >= 0; i--){
+		unmake_move(game, first_cycle[i]);
+	}
+
+	success = success && game->game_ply == 0;
+	success = success && game->state.zobrist_hash == initial_hash;
+	success = success && !is_threefold_repetition(game);
+
+	destroy_game(game);
+	return success;
+}
+
 int test_dummy(){
 	return 1;
 }
@@ -300,7 +362,7 @@ int main(){
 	initialize_attack_data();
 
 
-	int num_tests = 9;
+	int num_tests = 11;
 
 	int (*test_cases[num_tests])(); // array of function pointers
 	char* test_case_names[num_tests];
@@ -314,6 +376,8 @@ int main(){
 	test_cases[6] = test_promotion_round_trip;
 	test_cases[7] = test_long_game_round_trip;
 	test_cases[8] = test_special_move_round_trip;
+	test_cases[9] = test_threefold_repetition;
+	test_cases[10] = test_unmake_discards_repetition_history;
 
 	test_case_names[0] = "test_load_fen";
 	test_case_names[1] = "test_make_move";
@@ -324,6 +388,8 @@ int main(){
 	test_case_names[6] = "test_promotion_round_trip";
 	test_case_names[7] = "test_long_game_round_trip";
 	test_case_names[8] = "test_special_move_round_trip";
+	test_case_names[9] = "test_threefold_repetition";
+	test_case_names[10] = "test_unmake_discards_repetition_history";
 
 	
 	printf("====== GAME TESTS ======\n");

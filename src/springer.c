@@ -161,6 +161,9 @@ int main(){
         case DRAW_INSUFFICIENT_MATERIAL:
             printf("DRAW BY INSUFFICIENT MATERIAL.\n");
             break;
+        case DRAW_THREEFOLD_REPETITION:
+            printf("DRAW BY THREEFOLD REPETITION.\n");
+            break;
     }
 
     destroy_searchstate(&search_state);

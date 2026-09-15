@@ -30,10 +30,36 @@ static int ensure_undo_capacity(Game* game, int required){
 	return 1;
 }
 
+static int ensure_position_history_capacity(Game* game, int required){
+	if(required <= game->position_history_capacity){
+		return 1;
+	}
+
+	int new_capacity = game->position_history_capacity > 0
+		? game->position_history_capacity : 512;
+	while(new_capacity < required){
+		new_capacity *= 2;
+	}
+
+	uint64_t* new_history = (uint64_t*)realloc(game->position_history,
+		new_capacity * sizeof(uint64_t));
+	if(new_history == NULL){
+		return 0;
+	}
+
+	game->position_history = new_history;
+	game->position_history_capacity = new_capacity;
+	return 1;
+}
+
 
 /* Create, initialize and return a Game. Also creates a Board and sets up the AttackData for this game. */
 Game* create_game(){
+	initialize_attack_data();
 	Game* game = calloc(1, sizeof(Game));
+	if(game == NULL){
+		return NULL;
+	}
 	game->state.side_to_move = 1;
 	game->state.en_passant = -1;
 	game->state.halfmove_clock = 0;
@@ -43,6 +69,9 @@ Game* create_game(){
 	game->move_history = (Move*) calloc(game->move_history_capacity, sizeof(Move));
 	game->undo_capacity = 512;
 	game->undo_stack = (UndoInfo*) calloc(game->undo_capacity, sizeof(UndoInfo));
+	game->position_history_capacity = 512;
+	game->position_history = (uint64_t*)calloc(game->position_history_capacity,
+		sizeof(uint64_t));
 	game->game_ply = 0;
 
 	move_list_init(&game->legal_moves);
@@ -55,6 +84,7 @@ void destroy_game(Game* game){
 	if(!game) return;
 	free(game->move_history);
 	free(game->undo_stack);
+	free(game->position_history);
 	free(game);
 }
 
@@ -73,6 +103,9 @@ void initialize_game(Game* game){
 	game->game_status = ACTIVE;
 	initialize_zobrist_keys();
 	compute_zobrist_hash(&game->state);
+	if(ensure_position_history_capacity(game, 1)){
+		game->position_history[0] = game->state.zobrist_hash;
+	}
 	move_list_init(&game->legal_moves);
 	generate_legal_moves(game, game->state.side_to_move);
 }
@@ -140,7 +173,7 @@ int load_fen(Game* game, char* str){
 	for(size_t i = 0; ; i++){
 		char c = placement[i];
 		if(c == '/' || c == '\0'){
-			if(file != 8 || rank == 0 && c == '/'){
+			if(file != 8 || (rank == 0 && c == '/')){
 				return 0;
 			}
 			if(c == '\0'){
@@ -237,8 +270,12 @@ int load_fen(Game* game, char* str){
 
 	initialize_zobrist_keys();
 	compute_zobrist_hash(board);
+	if(!ensure_position_history_capacity(game, 1)){
+		return 0;
+	}
 	game->state = parsed_state;
 	game->game_ply = 0;
+	game->position_history[0] = game->state.zobrist_hash;
 	game->game_status = ACTIVE;
 	move_list_init(&game->legal_moves);
 	generate_legal_moves(game, game->state.side_to_move);
@@ -257,10 +294,28 @@ int has_insufficient_material(BoardState* state){
 	return minor_count <= 1;
 }
 
+int is_threefold_repetition(const Game* game){
+	if(game == NULL || game->position_history == NULL){
+		return 0;
+	}
+
+	uint64_t current_hash = game->state.zobrist_hash;
+	int occurrences = 0;
+	for(int i = 0; i <= game->game_ply; i++){
+		if(game->position_history[i] == current_hash){
+			occurrences++;
+		}
+	}
+
+	return occurrences >= 3;
+}
+
 void update_game_status(Game* game){
 	game->game_status = ACTIVE;
 	if(game->state.halfmove_clock > 99){
 		game->game_status = DRAW_FIFTY_MOVE;
+	} else if(is_threefold_repetition(game)){
+		game->game_status = DRAW_THREEFOLD_REPETITION;
 	} else if(game->legal_moves.size == 0){
 		if(square_attacked(&game->state, game->state.king_sq[game->state.side_to_move], !game->state.side_to_move)){
 			game->game_status = BLACK_WINS + (1 - game->state.side_to_move); // Winner is opposite of side to move
@@ -275,11 +330,13 @@ void update_game_status(Game* game){
 
 
 void make_move(Game* game, Move move){
-	if(!ensure_undo_capacity(game, game->game_ply + 1)){
+	if(!ensure_undo_capacity(game, game->game_ply + 1)
+		|| !ensure_position_history_capacity(game, game->game_ply + 2)){
 		return;
 	}
 	make_move_on_state(&game->state, move, &game->undo_stack[game->game_ply]);
 	game->game_ply += 1;
+	game->position_history[game->game_ply] = game->state.zobrist_hash;
 	move_list_init(&game->legal_moves);
 	generate_legal_moves(game, game->state.side_to_move);
 }

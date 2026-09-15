@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 AttackData attack_data = {}; // globally declared, statically allocated
+static int attack_data_initialized = 0;
 
 
 static void compute_knight_attacks(){
@@ -174,6 +175,10 @@ static void compute_diagonal_lurd(int index) {
 }
 
 void initialize_attack_data(){
+    if(attack_data_initialized){
+        return;
+    }
+
     for(int i=0;i<8;i++){ // Row
         attack_data.row[i] = (uint64_t)0b11111111 << (8*i);
     } 
@@ -191,5 +196,5 @@ void initialize_attack_data(){
     compute_pawn_attacks();
 
     generate_occupancy_table();
-
+	attack_data_initialized = 1;
 }

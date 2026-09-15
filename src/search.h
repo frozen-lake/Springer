@@ -4,7 +4,7 @@
 #include "transposition_table.h"
 
 #define MAX_SEARCH_PLY 128
-#define MAX_QUIESCENCE_PLY 12
+#define MAX_QUIESCENCE_PLY 10
 #define INF 50000
 #define MATE_SCORE 49000
 
