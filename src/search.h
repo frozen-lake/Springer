@@ -4,6 +4,7 @@
 #include "transposition_table.h"
 
 #define MAX_SEARCH_PLY 128
+#define MAX_QUIESCENCE_PLY 12
 #define INF 50000
 #define MATE_SCORE 49000
 
@@ -39,7 +40,7 @@ Move search_best_move(Game* game, SearchState* search_state);
 Move search_root(Game* game, SearchState* search_state, int depth);
 int evaluate(Game* game);
 int alpha_beta(SearchState* search_state, Game* game, int alpha, int beta, int depth_remaining, int ply);
-int quiesce(SearchState* search_state, Game* game, int alpha, int beta);
+int quiesce(SearchState* search_state, Game* game, int alpha, int beta, int ply, int qply);
 
 int initialize_searchstate(SearchState* search_state, TranspositionTable* tt, int max_depth, int* stop);
 void destroy_searchstate(SearchState* search_state);

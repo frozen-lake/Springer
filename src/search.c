@@ -333,7 +333,7 @@ int evaluate(Game* game){
     return game->state.side_to_move == White ? score : -score;
 }
 
-int quiesce(SearchState* search_state, Game* game, int alpha, int beta){
+int quiesce(SearchState* search_state, Game* game, int alpha, int beta, int ply, int qply){
     if(game == NULL){
         return 0;
     }
@@ -355,7 +355,11 @@ int quiesce(SearchState* search_state, Game* game, int alpha, int beta){
     order_moves(&moves, game);
 
     if(moves.size == 0){
-        return in_check ? -MATE_SCORE : 0;
+        return in_check ? -MATE_SCORE + ply : 0;
+    }
+
+    if(qply >= MAX_QUIESCENCE_PLY){
+        return evaluate(game);
     }
 
     int best = -INF;
@@ -373,12 +377,16 @@ int quiesce(SearchState* search_state, Game* game, int alpha, int beta){
         Move move = moves.moves[i];
         int is_tactical = get_move_capture(move) != 0
             || get_move_promotion(move) != NO_PROMOTION;
-        if(!in_check && !is_tactical){
-            continue;
-        }
         UndoInfo undo;
         make_move_on_state(&game->state, move, &undo);
-        int score = -quiesce(search_state, game, -beta, -alpha);
+        int gives_check = square_attacked(&game->state,
+            game->state.king_sq[game->state.side_to_move],
+            !game->state.side_to_move);
+        if(!in_check && !is_tactical && !gives_check){
+            unmake_move_on_state(&game->state, move, &undo);
+            continue;
+        }
+        int score = -quiesce(search_state, game, -beta, -alpha, ply + 1, qply + 1);
         unmake_move_on_state(&game->state, move, &undo);
 
         if(score > best){
@@ -411,7 +419,7 @@ int alpha_beta(SearchState* search_state, Game* game, int alpha, int beta, int d
     }
 
     if(depth_remaining == 0){
-        return quiesce(search_state, game, alpha, beta);
+        return quiesce(search_state, game, alpha, beta, ply, 0);
     }
 
     MoveList moves;

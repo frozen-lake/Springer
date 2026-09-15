@@ -11,7 +11,7 @@ int test_quiesce_quiet_position(void){
 	}
 
 	SearchState search_state = (SearchState){0};
-	int score = quiesce(&search_state, game, -INF, INF);
+	int score = quiesce(&search_state, game, -INF, INF, 0, 0);
 	int success = score == evaluate(game);
 
 	destroy_game(game);
@@ -26,7 +26,7 @@ int test_quiesce_finds_winning_capture(void){
 	}
 
 	SearchState search_state = (SearchState){0};
-	int score = quiesce(&search_state, game, -INF, INF);
+	int score = quiesce(&search_state, game, -INF, INF, 0, 0);
 	int success = score == 500;
 
 	destroy_game(game);
@@ -41,7 +41,7 @@ int test_quiesce_finds_capture_with_promotion(void){
 	}
 
 	SearchState search_state = (SearchState){0};
-	int score = quiesce(&search_state, game, -INF, INF);
+	int score = quiesce(&search_state, game, -INF, INF, 0, 0);
 	int success = (score == 900);
 
 	destroy_game(game);
@@ -57,7 +57,7 @@ int test_quiesce_check(void){
 	}
 
 	SearchState search_state = (SearchState){0};
-	int score = quiesce(&search_state, game, -INF, INF);
+	int score = quiesce(&search_state, game, -INF, INF, 0, 0);
 	int success = score == 0;
 
 	destroy_game(game);
@@ -72,7 +72,7 @@ int test_quiesce_checkmate(void){
 	}
 
 	SearchState search_state = (SearchState){0};
-	int score = quiesce(&search_state, game, -INF, INF);
+	int score = quiesce(&search_state, game, -INF, INF, 0, 0);
 	int success = score == -MATE_SCORE;
 
 	destroy_game(game);
@@ -87,7 +87,7 @@ int test_quiesce_stalemate(void){
 	}
 
 	SearchState search_state = (SearchState){0};
-	int score = quiesce(&search_state, game, -INF, INF);
+	int score = quiesce(&search_state, game, -INF, INF, 0, 0);
 	int success = score == 0;
 
 	destroy_game(game);
