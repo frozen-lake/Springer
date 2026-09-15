@@ -29,6 +29,12 @@ struct SearchState {
     TranspositionTable* tt;
     SearchTrace* trace;
     int nodes;
+    int alpha_beta_nodes;
+    int quiescence_nodes;
+    int tt_probes;
+    int tt_hits;
+    int tt_exact_cutoffs;
+    int tt_bound_cutoffs;
     int root_depth;
     int max_depth;
     int* stop;
@@ -41,6 +47,8 @@ Move search_root(Game* game, SearchState* search_state, int depth);
 int evaluate(Game* game);
 int alpha_beta(SearchState* search_state, Game* game, int alpha, int beta, int depth_remaining, int ply);
 int quiesce(SearchState* search_state, Game* game, int alpha, int beta, int ply, int qply);
+int score_to_tt(int score, int ply);
+int score_from_tt(int score, int ply);
 
 int initialize_searchstate(SearchState* search_state, TranspositionTable* tt, int max_depth, int* stop);
 void destroy_searchstate(SearchState* search_state);

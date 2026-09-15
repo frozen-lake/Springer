@@ -175,8 +175,80 @@ int test_stopped_search_preserves_state(){
     return success;
 }
 
+int test_tt_mate_score_normalization(){
+    int positive_mate = MATE_SCORE - 7;
+    int negative_mate = -MATE_SCORE + 7;
+    int positive_stored = score_to_tt(positive_mate, 5);
+    int negative_stored = score_to_tt(negative_mate, 5);
+
+    int success = positive_stored == MATE_SCORE - 2;
+    success = success && negative_stored == -MATE_SCORE + 2;
+    success = success && score_from_tt(positive_stored, 5) == positive_mate;
+    success = success && score_from_tt(negative_stored, 5) == negative_mate;
+    success = success && score_from_tt(positive_stored, 2) == MATE_SCORE - 4;
+    success = success && score_from_tt(negative_stored, 2) == -MATE_SCORE + 4;
+    success = success && score_to_tt(300, 5) == 300;
+    success = success && score_from_tt(-300, 5) == -300;
+    return success;
+}
+
+int test_tt_exact_entry_avoids_search(){
+    Game* game = create_game();
+    if(game == NULL){
+        return 0;
+    }
+    initialize_game(game);
+
+    TranspositionTable table = (TranspositionTable){0};
+    tt_init(&table);
+    SearchState search_state = (SearchState){0};
+    int stop = 0;
+    int success = initialize_searchstate(&search_state, &table, 3, &stop);
+    BoardState state_before = game->state;
+    tt_add(&table, game->state.zobrist_hash, 0, score_to_tt(321, 0), 3, TT_EXACT);
+    int score = alpha_beta(&search_state, game, -INF, INF, 3, 0);
+
+    success = success && score == 321;
+    success = success && search_state.nodes == 1;
+    success = success && memcmp(&state_before, &game->state, sizeof(state_before)) == 0;
+
+    destroy_searchstate(&search_state);
+    tt_free(&table);
+    destroy_game(game);
+    return success;
+}
+
+int test_tt_reuses_completed_search(){
+    Game* game = create_game();
+    if(game == NULL || !load_fen(game, "4k3/8/8/8/8/8/8/4KQ2 w - - 0 1")){
+        destroy_game(game);
+        return 0;
+    }
+
+    TranspositionTable table = (TranspositionTable){0};
+    tt_init(&table);
+    SearchState search_state = (SearchState){0};
+    int stop = 0;
+    int success = initialize_searchstate(&search_state, &table, 2, &stop);
+    BoardState state_before = game->state;
+    int first_score = alpha_beta(&search_state, game, -INF, INF, 2, 0);
+    int first_nodes = search_state.nodes;
+    search_state.nodes = 0;
+    int second_score = alpha_beta(&search_state, game, -INF, INF, 2, 0);
+
+    success = success && first_nodes > 1;
+    success = success && second_score == first_score;
+    success = success && search_state.nodes == 1;
+    success = success && memcmp(&state_before, &game->state, sizeof(state_before)) == 0;
+
+    destroy_searchstate(&search_state);
+    tt_free(&table);
+    destroy_game(game);
+    return success;
+}
+
 int search_tests(){
-    int num_tests = 9;
+    int num_tests = 12;
 
 	int (*test_cases[num_tests])();
 	char* test_case_names[num_tests];
@@ -190,6 +262,9 @@ int search_tests(){
     test_cases[6] = test_search_checkmate_score;
     test_cases[7] = test_search_stalemate_score;
     test_cases[8] = test_stopped_search_preserves_state;
+    test_cases[9] = test_tt_mate_score_normalization;
+    test_cases[10] = test_tt_exact_entry_avoids_search;
+    test_cases[11] = test_tt_reuses_completed_search;
 
     test_case_names[0] = "test_initialize_searchstate_null";
     test_case_names[1] = "test_initialize_searchstate_defaults_and_clamp";
@@ -200,6 +275,9 @@ int search_tests(){
     test_case_names[6] = "test_search_checkmate_score";
     test_case_names[7] = "test_search_stalemate_score";
     test_case_names[8] = "test_stopped_search_preserves_state";
+	test_case_names[9] = "test_tt_mate_score_normalization";
+	test_case_names[10] = "test_tt_exact_entry_avoids_search";
+	test_case_names[11] = "test_tt_reuses_completed_search";
 
     return run_tests(test_cases, test_case_names, num_tests);
 }

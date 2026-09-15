@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-AttackData attack_data = {}; // globally declared, statically allocated
+AttackData attack_data = {0}; // globally declared, statically allocated
 static int attack_data_initialized = 0;
 
 

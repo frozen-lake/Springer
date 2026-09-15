@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include "game.h"
 
 #ifndef TTABLE_H
@@ -12,10 +14,11 @@
 typedef struct {
     uint64_t key;
     Move best_move;
-    int16_t score;
+    int32_t score;
     uint8_t depth;
     uint8_t flag;
     uint8_t age;
+    uint8_t occupied;
 } TranspositionTableEntry;
 
 typedef struct {
@@ -28,6 +31,7 @@ typedef struct {
 
 void tt_add(TranspositionTable* table, uint64_t key, Move move, int score, int depth, int flag);
 void tt_clear(TranspositionTable* table);
+void tt_new_generation(TranspositionTable* table);
 TranspositionTableEntry* table_get(TranspositionTable* table, uint64_t key);
 void tt_init(TranspositionTable* table);
 void tt_free(TranspositionTable* table);
