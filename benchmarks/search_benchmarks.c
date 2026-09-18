@@ -1,7 +1,3 @@
-#ifndef BENCHMARK_STATS
-#define BENCHMARK_STATS
-#endif
-
 #include "search_benchmarks.h"
 
 #include <stdio.h>

@@ -6,8 +6,6 @@
 #define GAME_H
 
 #define DEBUG_ERR 1
-#define DEBUG_PERF 1
-#define DEBUG_SEARCH 1
 
 
 enum GameStatus {

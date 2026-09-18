@@ -2,8 +2,6 @@
 #include "move_gen.h"
 #include "board.h"
 #include "game.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 static int PIECE_VALUES[8] = {0, 0, 100, 300, 300, 500, 900, 10000};
 #define DELTA_PRUNING_MARGIN 100
@@ -27,96 +25,6 @@ static void clear_pv_storage(SearchState* search_state){
     }
 }
 
-static void print_pv_line(Move* pv, int pv_length){
-    if(pv == NULL || pv_length <= 0){
-        return;
-    }
-
-    char move_text[16];
-
-    for(int i = 0; i < pv_length && i < MAX_SEARCH_PLY; i++){
-        Move move = pv[i];
-        if(move == 0){
-            break;
-        }
-
-        if(move_to_simplified_algebraic(move, move_text, sizeof(move_text))){
-            printf(" %s", move_text);
-        } else {
-            printf(" (unknown)");
-        }
-    }
-}
-
-void initialize_searchtrace(SearchTrace* trace){
-    if(trace == NULL){
-        return;
-    }
-
-    trace->best_move = 0;
-    trace->best_score = -INF;
-    trace->depth = 0;
-    trace->nodes = 0;
-    trace->pv_length = 0;
-    trace->num_root_moves = 0;
-
-    for(int i = 0; i < MAX_SEARCH_PLY; i++){
-        trace->pv_line[i] = 0;
-    }
-
-    for(int i = 0; i < MAX_MOVES; i++){
-        trace->root_moves[i] = 0;
-        trace->root_scores[i] = -INF;
-        trace->root_pv_lengths[i] = 0;
-        for(int j = 0; j < MAX_SEARCH_PLY; j++){
-            trace->root_pvs[i][j] = 0;
-        }
-    }
-}
-
-void print_searchtrace(Game* game, SearchState* search_state){
-    if(!DEBUG_SEARCH || game == NULL || search_state == NULL || search_state->trace == NULL){
-        printf("No search trace available.\n");
-        return;
-    }
-
-    SearchTrace* trace = search_state->trace;
-    char move_text[16];
-
-    printf("<--SEARCH TRACE-->\n");
-    printf("depth: %d\n", trace->depth);
-    printf("nodes: %d\n", trace->nodes);
-    printf("best score: %d\n", trace->best_score);
-    printf("best move: ");
-    if(move_to_simplified_algebraic(trace->best_move, move_text, sizeof(move_text))){
-        printf("%s\n", move_text);
-    } else {
-        printf("(none)\n");
-    }
-
-    if(trace->pv_length > 0){
-        printf("pv:");
-        print_pv_line(trace->pv_line, trace->pv_length);
-        printf("\n");
-    }
-
-    printf("<--MOVE SCORES-->\n");
-    for(int i = 0; i < trace->num_root_moves; i++){
-        if(move_to_simplified_algebraic(trace->root_moves[i], move_text, sizeof(move_text))){
-            printf("%s: score=%d", move_text, trace->root_scores[i]);
-        } else {
-            printf("(unknown): score=%d", trace->root_scores[i]);
-        }
-
-        if(trace->root_pv_lengths[i] > 0){
-            printf(", pv:");
-            print_pv_line(trace->root_pvs[i], trace->root_pv_lengths[i]);
-        }
-
-        printf("\n");
-    }
-}
-
 Move search_best_move(Game* game, SearchState* search_state){
     if(game == NULL || search_state == NULL){
         return 0;
@@ -133,11 +41,6 @@ Move search_best_move(Game* game, SearchState* search_state){
     }
     if(depth > search_state->max_depth){
         depth = search_state->max_depth;
-    }
-
-    if(DEBUG_SEARCH && search_state->trace != NULL){
-        initialize_searchtrace(search_state->trace);
-        search_state->trace->depth = depth;
     }
 
     return search_root(game, search_state, depth);
@@ -178,15 +81,9 @@ Move search_root(Game* game, SearchState* search_state, int depth){
 
     Move best_move = moves.moves[0];
     int best = -INF;
-    int completed_root_moves = 0;
 
     for(int i = 0; i < moves.size; i++){
         Move move = moves.moves[i];
-
-        if(DEBUG_SEARCH && search_state->trace != NULL && i < MAX_MOVES){
-            search_state->trace->root_moves[i] = move;
-            search_state->trace->root_scores[i] = -INF;
-        }
 
         UndoInfo undo;
         make_move_on_state(&game->state, move, &undo);
@@ -195,42 +92,9 @@ Move search_root(Game* game, SearchState* search_state, int depth){
 
         unmake_move_on_state(&game->state, move, &undo);
 
-        if(DEBUG_SEARCH && search_state->trace != NULL && i < MAX_MOVES){
-            search_state->trace->root_scores[i] = score;
-
-            int child_len = search_state->pv_lengths[1];
-            int root_len = 1 + child_len;
-            if(root_len > MAX_SEARCH_PLY){
-                root_len = MAX_SEARCH_PLY;
-            }
-
-            search_state->trace->root_pvs[i][0] = move;
-            for(int j = 0; j < child_len && (j + 1) < MAX_SEARCH_PLY; j++){
-                search_state->trace->root_pvs[i][j + 1] = search_state->pv_table[1][j];
-            }
-            search_state->trace->root_pv_lengths[i] = root_len;
-        }
-
-        completed_root_moves = i + 1;
-
         if(score > best){
             best = score;
             best_move = move;
-
-            if(DEBUG_SEARCH && search_state->trace != NULL){
-                search_state->trace->best_move = move;
-                search_state->trace->best_score = score;
-
-                int child_len = search_state->pv_lengths[1];
-                search_state->trace->pv_line[0] = move;
-                for(int j = 0; j < child_len && (j + 1) < MAX_SEARCH_PLY; j++){
-                    search_state->trace->pv_line[j + 1] = search_state->pv_table[1][j];
-                }
-                search_state->trace->pv_length = 1 + child_len;
-                if(search_state->trace->pv_length > MAX_SEARCH_PLY){
-                    search_state->trace->pv_length = MAX_SEARCH_PLY;
-                }
-            }
 
             search_state->pv_table[0][0] = move;
             for(int j = 0; j < search_state->pv_lengths[1] && (j + 1) < MAX_SEARCH_PLY; j++){
@@ -251,13 +115,6 @@ Move search_root(Game* game, SearchState* search_state, int depth){
         search_state->pv_lengths[0] = 0;
     }
 
-    if(DEBUG_SEARCH && search_state->trace != NULL){
-        search_state->trace->best_move = best_move;
-        search_state->trace->best_score = best;
-        search_state->trace->nodes = search_state->nodes;
-        search_state->trace->num_root_moves = completed_root_moves;
-    }
-
     return best_move;
 }
 
@@ -267,7 +124,6 @@ int initialize_searchstate(SearchState* search_state, TranspositionTable* tt, in
     }
 
     search_state->tt = tt;
-    search_state->trace = NULL;
     search_state->nodes = 0;
     search_state->root_depth = 0;
     search_state->stop = stop;
@@ -281,26 +137,11 @@ int initialize_searchstate(SearchState* search_state, TranspositionTable* tt, in
         search_state->max_depth = max_depth;
     }
 
-    if(DEBUG_SEARCH){
-        search_state->trace = (SearchTrace*)calloc(1, sizeof(SearchTrace));
-        if(search_state->trace == NULL){
-            return 0;
-        }
-        initialize_searchtrace(search_state->trace);
-    }
-
     return 1;
 }
 
 void destroy_searchstate(SearchState* search_state){
-    if(search_state == NULL){
-        return;
-    }
-
-    if(search_state->trace != NULL){
-        free(search_state->trace);
-        search_state->trace = NULL;
-    }
+    (void)search_state;
 }
 
 void reset_searchstate(SearchState* search_state){

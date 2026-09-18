@@ -59,7 +59,7 @@ int main(){
     int search_stop = 0;
 
     tt_init(&search_tt);
-    initialize_searchstate(&search_state, &search_tt, 3, &search_stop);
+    initialize_searchstate(&search_state, &search_tt, 4, &search_stop);
 
 
     print_options();
@@ -104,11 +104,6 @@ int main(){
 
         for(int i=0;i<(int)strlen(move_buffer);i++){
             if(move_buffer[i] == '\n'){ move_buffer[i] = '\0'; }
-        }
-
-        if(strcmp(move_buffer, "debug") == 0){
-            print_searchtrace(game, &search_state);
-            continue;
         }
 
         Move move = parse_algebraic_move(move_buffer, game);
