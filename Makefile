@@ -7,8 +7,8 @@ BENCHMARK_DIR = benchmarks
 BENCHMARK_OBJ_DIR = $(OBJ_DIR)/benchmarks
 BENCHMARK_CFLAGS = $(CFLAGS) -DBENCHMARK_STATS
 
-SRC_FILES = $(SRC_DIR)/board.c $(SRC_DIR)/game.c $(SRC_DIR)/move.c $(SRC_DIR)/attack_data.c $(SRC_DIR)/move_gen.c $(SRC_DIR)/search.c $(SRC_DIR)/transposition_table.c
-TEST_FILES = $(TEST_DIR)/attack_and_move_tests.c $(TEST_DIR)/move_gen_tests.c $(TEST_DIR)/tests.c $(TEST_DIR)/endgame_tests.c $(TEST_DIR)/search_tests.c $(TEST_DIR)/transposition_table_tests.c $(TEST_DIR)/perft_tests.c $(TEST_DIR)/quiescence_tests.c
+SRC_FILES = $(SRC_DIR)/board.c $(SRC_DIR)/game.c $(SRC_DIR)/move.c $(SRC_DIR)/attack_data.c $(SRC_DIR)/move_gen.c $(SRC_DIR)/search.c $(SRC_DIR)/transposition_table.c $(SRC_DIR)/uci_adapter.c
+TEST_FILES = $(TEST_DIR)/attack_and_move_tests.c $(TEST_DIR)/move_gen_tests.c $(TEST_DIR)/tests.c $(TEST_DIR)/endgame_tests.c $(TEST_DIR)/search_tests.c $(TEST_DIR)/transposition_table_tests.c $(TEST_DIR)/perft_tests.c $(TEST_DIR)/quiescence_tests.c $(TEST_DIR)/uci_tests.c
 BENCHMARK_FILES = $(BENCHMARK_DIR)/search_benchmarks.c
 
 # notdir removes directory prefix, patsubst adds obj file directory and replaces .c with .o

@@ -8,6 +8,7 @@
 #include "transposition_table_tests.h"
 #include "perft_tests.h"
 #include "quiescence_tests.h"
+#include "uci_tests.h"
 #include "../src/game.h"
 #include "../src/move.h"
 #include "../src/attack_data.h"
@@ -418,6 +419,9 @@ int main(){
 
 	printf("====== QUIESCENCE TESTS ======\n");
 	success = quiescence_tests() && success;
+
+	printf("====== UCI TESTS ======\n");
+	success = uci_tests() && success;
 
 	printf("======\n");
 	return success ? 0 : 1;
