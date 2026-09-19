@@ -283,6 +283,85 @@ int load_fen(Game* game, char* str){
 	return 1;
 }
 
+int save_fen(const Game* game, char* out, size_t out_size){
+	if(game == NULL || out == NULL || out_size == 0){
+		return 0;
+	}
+
+	const BoardState* board = &game->state;
+	char placement[80];
+	int p = 0;
+
+	for(int rank = 7; rank >= 0; rank--){
+		int empty = 0;
+		for(int file = 0; file < 8; file++){
+			int square = rank * 8 + file;
+			char piece = position_to_piece_char((Board*)board, square);
+			if(piece == ' '){
+				empty += 1;
+			} else {
+				if(empty > 0){
+					placement[p++] = (char)('0' + empty);
+					empty = 0;
+				}
+				placement[p++] = piece;
+			}
+		}
+
+		if(empty > 0){
+			placement[p++] = (char)('0' + empty);
+		}
+		if(rank > 0){
+			placement[p++] = '/';
+		}
+	}
+	placement[p] = '\0';
+
+	char castling[5];
+	int c = 0;
+	if(board->castling_rights & (1 << 2)){
+		castling[c++] = 'K';
+	}
+	if(board->castling_rights & (1 << 3)){
+		castling[c++] = 'Q';
+	}
+	if(board->castling_rights & (1 << 0)){
+		castling[c++] = 'k';
+	}
+	if(board->castling_rights & (1 << 1)){
+		castling[c++] = 'q';
+	}
+	if(c == 0){
+		castling[c++] = '-';
+	}
+	castling[c] = '\0';
+
+	char en_passant[3];
+	if(board->en_passant == -1){
+		en_passant[0] = '-';
+		en_passant[1] = '\0';
+	} else {
+		en_passant[0] = (char)('a' + (board->en_passant % 8));
+		en_passant[1] = (char)('1' + (board->en_passant / 8));
+		en_passant[2] = '\0';
+	}
+
+	unsigned int fullmove_number = (unsigned int)(game->game_ply / 2) + 1;
+	if(fullmove_number == 0){
+		fullmove_number = 1;
+	}
+
+	int written = snprintf(out, out_size, "%s %c %s %s %u %u",
+		placement,
+		board->side_to_move == White ? 'w' : 'b',
+		castling,
+		en_passant,
+		(unsigned int)board->halfmove_clock,
+		fullmove_number);
+
+	return written >= 0 && (size_t)written < out_size;
+}
+
 int has_insufficient_material(BoardState* state){
 	if(state->pieces[Pawn] || state->pieces[Rook] || state->pieces[Queen]){
 		return 0;

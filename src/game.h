@@ -41,6 +41,7 @@ Game* create_game();
 void destroy_game(Game* game);
 void initialize_game(Game* game);
 int load_fen(Game* game, char* str);
+int save_fen(const Game* game, char* out, size_t out_size);
 void update_game_status(Game* game);
 int has_insufficient_material(BoardState* state);
 int is_threefold_repetition(const Game* game);

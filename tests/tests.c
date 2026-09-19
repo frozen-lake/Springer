@@ -87,6 +87,50 @@ int test_load_fen_invalid(){
 	return success;
 }
 
+int test_save_fen_initial_position(){
+	Game* game = create_game();
+	char fen[128];
+	const char* expected = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+	if(game == NULL){
+		return 0;
+	}
+
+	initialize_game(game);
+	int success = save_fen(game, fen, sizeof(fen));
+	success = success && (strcmp(fen, expected) == 0);
+
+	destroy_game(game);
+	return success;
+}
+
+int test_save_fen_round_trip_state(){
+	Game* game = create_game();
+	Game* game2 = create_game();
+	char fen[128];
+	int success;
+
+	if(game == NULL || game2 == NULL){
+		destroy_game(game);
+		destroy_game(game2);
+		return 0;
+	}
+
+	success = load_fen(game, "4k3/8/8/1n2p3/4P1Pp/8/8/3BK3 b - g3 7 23");
+	success = success && save_fen(game, fen, sizeof(fen));
+	success = success && load_fen(game2, fen);
+
+	success = success && (memcmp(game->state.pieces, game2->state.pieces, sizeof(game->state.pieces)) == 0);
+	success = success && (game->state.side_to_move == game2->state.side_to_move);
+	success = success && (game->state.castling_rights == game2->state.castling_rights);
+	success = success && (game->state.en_passant == game2->state.en_passant);
+	success = success && (game->state.halfmove_clock == game2->state.halfmove_clock);
+
+	destroy_game(game);
+	destroy_game(game2);
+	return success;
+}
+
 int test_make_move(){
 	Game* game = create_game();
 	
@@ -363,7 +407,7 @@ int main(){
 	initialize_attack_data();
 
 
-	int num_tests = 11;
+	int num_tests = 13;
 
 	int (*test_cases[num_tests])(); // array of function pointers
 	char* test_case_names[num_tests];
@@ -374,11 +418,13 @@ int main(){
 	test_cases[3] = test_zobrist_hash_after_move;
 	test_cases[4] = test_unmake_move_round_trip;
 	test_cases[5] = test_load_fen_invalid;
-	test_cases[6] = test_promotion_round_trip;
-	test_cases[7] = test_long_game_round_trip;
-	test_cases[8] = test_special_move_round_trip;
-	test_cases[9] = test_threefold_repetition;
-	test_cases[10] = test_unmake_discards_repetition_history;
+	test_cases[6] = test_save_fen_initial_position;
+	test_cases[7] = test_save_fen_round_trip_state;
+	test_cases[8] = test_promotion_round_trip;
+	test_cases[9] = test_long_game_round_trip;
+	test_cases[10] = test_special_move_round_trip;
+	test_cases[11] = test_threefold_repetition;
+	test_cases[12] = test_unmake_discards_repetition_history;
 
 	test_case_names[0] = "test_load_fen";
 	test_case_names[1] = "test_make_move";
@@ -386,11 +432,13 @@ int main(){
 	test_case_names[3] = "test_zobrist_hash_after_move";
 	test_case_names[4] = "test_unmake_move_round_trip";
 	test_case_names[5] = "test_load_fen_invalid";
-	test_case_names[6] = "test_promotion_round_trip";
-	test_case_names[7] = "test_long_game_round_trip";
-	test_case_names[8] = "test_special_move_round_trip";
-	test_case_names[9] = "test_threefold_repetition";
-	test_case_names[10] = "test_unmake_discards_repetition_history";
+	test_case_names[6] = "test_save_fen_initial_position";
+	test_case_names[7] = "test_save_fen_round_trip_state";
+	test_case_names[8] = "test_promotion_round_trip";
+	test_case_names[9] = "test_long_game_round_trip";
+	test_case_names[10] = "test_special_move_round_trip";
+	test_case_names[11] = "test_threefold_repetition";
+	test_case_names[12] = "test_unmake_discards_repetition_history";
 
 	
 	printf("====== GAME TESTS ======\n");
