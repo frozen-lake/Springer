@@ -87,6 +87,32 @@ int test_load_fen_invalid(){
 	return success;
 }
 
+int test_load_fen_rejects_kingless_by_default(){
+	Game* game = create_game();
+	if(game == NULL){
+		return 0;
+	}
+
+	int success = !load_fen(game, "4r3/8/8/8/8/8/8/R3K2R w K - 0 1");
+
+	destroy_game(game);
+	return success;
+}
+
+int test_load_fen_ex_allows_kingless(){
+	Game* game = create_game();
+	if(game == NULL){
+		return 0;
+	}
+
+	int success = load_fen_ex(game, "4r3/8/8/8/8/8/8/R3K2R w K - 0 1", FEN_ALLOW_KINGLESS);
+	success = success && (game->state.side_to_move == White);
+	success = success && (game->state.castling_rights == (1 << 2));
+
+	destroy_game(game);
+	return success;
+}
+
 int test_save_fen_initial_position(){
 	Game* game = create_game();
 	char fen[128];
@@ -404,13 +430,10 @@ int run_tests(int (*test_cases[])(), char** test_case_names, int num_cases){
 }
 
 int main(){
+	int (*test_cases[15])(); // array of function pointers
+	char* test_case_names[15];
+
 	initialize_attack_data();
-
-
-	int num_tests = 13;
-
-	int (*test_cases[num_tests])(); // array of function pointers
-	char* test_case_names[num_tests];
 
 	test_cases[0] = test_load_fen;
 	test_cases[1] = test_make_move;
@@ -418,13 +441,15 @@ int main(){
 	test_cases[3] = test_zobrist_hash_after_move;
 	test_cases[4] = test_unmake_move_round_trip;
 	test_cases[5] = test_load_fen_invalid;
-	test_cases[6] = test_save_fen_initial_position;
-	test_cases[7] = test_save_fen_round_trip_state;
-	test_cases[8] = test_promotion_round_trip;
-	test_cases[9] = test_long_game_round_trip;
-	test_cases[10] = test_special_move_round_trip;
-	test_cases[11] = test_threefold_repetition;
-	test_cases[12] = test_unmake_discards_repetition_history;
+	test_cases[6] = test_load_fen_rejects_kingless_by_default;
+	test_cases[7] = test_load_fen_ex_allows_kingless;
+	test_cases[8] = test_save_fen_initial_position;
+	test_cases[9] = test_save_fen_round_trip_state;
+	test_cases[10] = test_promotion_round_trip;
+	test_cases[11] = test_long_game_round_trip;
+	test_cases[12] = test_special_move_round_trip;
+	test_cases[13] = test_threefold_repetition;
+	test_cases[14] = test_unmake_discards_repetition_history;
 
 	test_case_names[0] = "test_load_fen";
 	test_case_names[1] = "test_make_move";
@@ -432,17 +457,19 @@ int main(){
 	test_case_names[3] = "test_zobrist_hash_after_move";
 	test_case_names[4] = "test_unmake_move_round_trip";
 	test_case_names[5] = "test_load_fen_invalid";
-	test_case_names[6] = "test_save_fen_initial_position";
-	test_case_names[7] = "test_save_fen_round_trip_state";
-	test_case_names[8] = "test_promotion_round_trip";
-	test_case_names[9] = "test_long_game_round_trip";
-	test_case_names[10] = "test_special_move_round_trip";
-	test_case_names[11] = "test_threefold_repetition";
-	test_case_names[12] = "test_unmake_discards_repetition_history";
+	test_case_names[6] = "test_load_fen_rejects_kingless_by_default";
+	test_case_names[7] = "test_load_fen_ex_allows_kingless";
+	test_case_names[8] = "test_save_fen_initial_position";
+	test_case_names[9] = "test_save_fen_round_trip_state";
+	test_case_names[10] = "test_promotion_round_trip";
+	test_case_names[11] = "test_long_game_round_trip";
+	test_case_names[12] = "test_special_move_round_trip";
+	test_case_names[13] = "test_threefold_repetition";
+	test_case_names[14] = "test_unmake_discards_repetition_history";
 
 	
 	printf("====== GAME TESTS ======\n");
-	int success = run_tests(test_cases, test_case_names, num_tests);
+	int success = run_tests(test_cases, test_case_names, 15);
 
 	printf("====== MOVE TESTS ======\n");
 	success = move_tests() && success;

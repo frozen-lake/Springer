@@ -200,7 +200,7 @@ int test_is_legal_move_castling(){
 	destroy_game(game);
 
 	game = create_game();
-	load_fen(game, "4r3/8/8/8/8/8/8/R3K2R w K - 0 1");
+	load_fen_ex(game, "4r3/8/8/8/8/8/8/R3K2R w K - 0 1", FEN_ALLOW_KINGLESS);
 	success = success && !is_legal_move(game, w_kingside);
 	destroy_game(game);
 
@@ -215,7 +215,7 @@ int test_is_legal_move_castling(){
 	destroy_game(game);
 
 	game = create_game();
-	load_fen(game, "r3k2r/8/8/8/8/8/8/8 b kq - 0 1");
+	load_fen_ex(game, "r3k2r/8/8/8/8/8/8/8 b kq - 0 1", FEN_ALLOW_KINGLESS);
 	success = success && is_legal_move(game, b_queenside);
 	destroy_game(game);
 

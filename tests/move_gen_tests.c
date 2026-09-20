@@ -183,7 +183,7 @@ int test_generate_king_moves(){
     move_list_init(&generated_moves);
     move_list_init(&expected_moves);
 
-    success = success && load_fen(game, "4r3/8/8/8/8/8/8/R3K2R w KQ - 0 1");
+    success = success && load_fen_ex(game, "4r3/8/8/8/8/8/8/R3K2R w KQ - 0 1", FEN_ALLOW_KINGLESS);
     move_list_add(&expected_moves, E1 | (D1 << 6) | (King << 12));
     move_list_add(&expected_moves, E1 | (D2 << 6) | (King << 12));
     move_list_add(&expected_moves, E1 | (E2 << 6) | (King << 12));

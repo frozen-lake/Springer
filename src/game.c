@@ -131,8 +131,7 @@ static int parse_unsigned_field(const char* field, unsigned long maximum, unsign
 	return 1;
 }
 
-/* Load a position from a FEN String (Forsyth-Edwards Notation.) */
-int load_fen(Game* game, char* str){
+static int load_fen_internal(Game* game, char* str, unsigned int flags){
 	if(game == NULL || str == NULL){
 		return 0;
 	}
@@ -230,6 +229,11 @@ int load_fen(Game* game, char* str){
 		return 0;
 	}
 
+	if(!(flags & FEN_ALLOW_KINGLESS)
+		&& (white_king_count != 1 || black_king_count != 1)){
+		return 0;
+	}
+
 	if(strcmp(fields[2], "-") != 0){
 		if(fields[2][0] == '\0'){
 			return 0;
@@ -281,6 +285,15 @@ int load_fen(Game* game, char* str){
 	generate_legal_moves(game, game->state.side_to_move);
 
 	return 1;
+}
+
+/* Load a position from a FEN String (Forsyth-Edwards Notation.) */
+int load_fen(Game* game, char* str){
+	return load_fen_internal(game, str, FEN_LOAD_DEFAULT);
+}
+
+int load_fen_ex(Game* game, char* str, unsigned int flags){
+	return load_fen_internal(game, str, flags);
 }
 
 int save_fen(const Game* game, char* out, size_t out_size){

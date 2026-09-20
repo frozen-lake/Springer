@@ -18,6 +18,11 @@ enum GameStatus {
 	DRAW_THREEFOLD_REPETITION,
 };
 
+enum FenLoadFlags {
+	FEN_LOAD_DEFAULT = 0,
+	FEN_ALLOW_KINGLESS = 1,
+};
+
 typedef struct Game Game;
 
 struct Game {
@@ -41,6 +46,7 @@ Game* create_game();
 void destroy_game(Game* game);
 void initialize_game(Game* game);
 int load_fen(Game* game, char* str);
+int load_fen_ex(Game* game, char* str, unsigned int flags);
 int save_fen(const Game* game, char* out, size_t out_size);
 void update_game_status(Game* game);
 int has_insufficient_material(BoardState* state);
