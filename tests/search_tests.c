@@ -3,6 +3,7 @@
 #include "tests.h"
 #include "../src/game.h"
 #include "../src/search.h"
+#include "../src/uci_adapter.h"
 
 
 int test_initialize_searchstate_null(){
@@ -327,11 +328,205 @@ int test_tt_reuses_completed_search(){
     return success;
 }
 
+int test_search_threefold_draw_score(){
+    Game* game = create_game();
+    Move white_out = 0;
+    Move black_out = 0;
+    Move white_back = 0;
+    Move black_back = 0;
+    int success;
+
+    if(game == NULL){
+        destroy_game(game);
+        return 0;
+    }
+
+    if(!load_fen(game, "4k3/8/8/8/8/8/8/R3K3 w - - 0 1")){
+        destroy_game(game);
+        return 0;
+    }
+
+    success = parse_uci_move("a1a2", game, &white_out);
+
+    if(!success){
+        destroy_game(game);
+        return 0;
+    }
+
+    make_move(game, white_out);
+
+    success = parse_uci_move("e8e7", game, &black_out);
+    if(!success){
+        destroy_game(game);
+        return 0;
+    }
+
+    make_move(game, black_out);
+
+    success = parse_uci_move("a2a1", game, &white_back);
+    if(!success){
+        destroy_game(game);
+        return 0;
+    }
+
+    make_move(game, white_back);
+
+    success = parse_uci_move("e7e8", game, &black_back);
+    if(!success){
+        destroy_game(game);
+        return 0;
+    }
+
+    make_move(game, black_back);
+    make_move(game, white_out);
+    make_move(game, black_out);
+    make_move(game, white_back);
+    make_move(game, black_back);
+
+    SearchState search_state = (SearchState){0};
+    int stop = 0;
+    success = initialize_searchstate(&search_state, NULL, 2, &stop);
+
+    int score = alpha_beta(&search_state, game, -INF, INF, 2, 0);
+    success = success && score == 0;
+
+    destroy_searchstate(&search_state);
+    destroy_game(game);
+    return success;
+}
+
+int test_search_fifty_move_draw_score(){
+    Game* game = create_game();
+    if(game == NULL || !load_fen(game, "4k3/8/8/8/8/8/8/4K3 w - - 100 1")){
+        destroy_game(game);
+        return 0;
+    }
+
+    SearchState search_state = (SearchState){0};
+    int stop = 0;
+    int success = initialize_searchstate(&search_state, NULL, 2, &stop);
+
+    int score = alpha_beta(&search_state, game, -INF, INF, 2, 0);
+    success = success && score == 0;
+
+    destroy_searchstate(&search_state);
+    destroy_game(game);
+    return success;
+}
+
+int test_search_insufficient_material_draw_score(){
+    Game* game = create_game();
+    if(game == NULL || !load_fen(game, "4k3/8/8/8/8/8/8/4K3 w - - 0 1")){
+        destroy_game(game);
+        return 0;
+    }
+
+    SearchState search_state = (SearchState){0};
+    int stop = 0;
+    int success = initialize_searchstate(&search_state, NULL, 2, &stop);
+
+    int score = alpha_beta(&search_state, game, -INF, INF, 2, 0);
+    success = success && score == 0;
+
+    destroy_searchstate(&search_state);
+    destroy_game(game);
+    return success;
+}
+
+int test_tt_does_not_force_draw_across_history_contexts(){
+    const char* fen = "4k3/8/8/8/8/8/8/R3KQ2 w - - 0 1";
+    Game* draw_game = create_game();
+    Game* fresh_game = create_game();
+    Move white_out = 0;
+    Move black_out = 0;
+    Move white_back = 0;
+    Move black_back = 0;
+    int stop = 0;
+    int success = draw_game != NULL && fresh_game != NULL;
+
+    if(!success || !load_fen(draw_game, (char*)fen) || !load_fen(fresh_game, (char*)fen)){
+        destroy_game(draw_game);
+        destroy_game(fresh_game);
+        return 0;
+    }
+
+    success = parse_uci_move("a1a2", draw_game, &white_out);
+    if(!success){
+        destroy_game(draw_game);
+        destroy_game(fresh_game);
+        return 0;
+    }
+
+    make_move(draw_game, white_out);
+    success = parse_uci_move("e8e7", draw_game, &black_out);
+    if(!success){
+        destroy_game(draw_game);
+        destroy_game(fresh_game);
+        return 0;
+    }
+
+    make_move(draw_game, black_out);
+    success = parse_uci_move("a2a1", draw_game, &white_back);
+    if(!success){
+        destroy_game(draw_game);
+        destroy_game(fresh_game);
+        return 0;
+    }
+
+    make_move(draw_game, white_back);
+    success = parse_uci_move("e7e8", draw_game, &black_back);
+    if(!success){
+        destroy_game(draw_game);
+        destroy_game(fresh_game);
+        return 0;
+    }
+
+    make_move(draw_game, black_back);
+    make_move(draw_game, white_out);
+    make_move(draw_game, black_out);
+    make_move(draw_game, white_back);
+    make_move(draw_game, black_back);
+
+    if(draw_game->state.zobrist_hash != fresh_game->state.zobrist_hash){
+        destroy_game(draw_game);
+        destroy_game(fresh_game);
+        return 0;
+    }
+
+    TranspositionTable table = (TranspositionTable){0};
+    tt_init(&table);
+
+    SearchState draw_state = (SearchState){0};
+    SearchState fresh_state = (SearchState){0};
+    success = initialize_searchstate(&draw_state, &table, 2, &stop)
+        && initialize_searchstate(&fresh_state, &table, 2, &stop);
+
+    if(!success){
+        tt_free(&table);
+        destroy_game(draw_game);
+        destroy_game(fresh_game);
+        return 0;
+    }
+
+    int draw_score = alpha_beta(&draw_state, draw_game, -INF, INF, 2, 0);
+    int fresh_score = alpha_beta(&fresh_state, fresh_game, -INF, INF, 2, 0);
+
+    success = success && draw_score == 0;
+    success = success && fresh_score != 0;
+
+    destroy_searchstate(&draw_state);
+    destroy_searchstate(&fresh_state);
+    tt_free(&table);
+    destroy_game(draw_game);
+    destroy_game(fresh_game);
+    return success;
+}
+
 int search_tests(){
-    int num_tests = 15;
-    
-    int (*test_cases[num_tests])();
-    char* test_case_names[num_tests];
+    int num_tests = 19;
+
+	int (*test_cases[num_tests])();
+	char* test_case_names[num_tests];
 
     test_cases[0] = test_initialize_searchstate_null;
     test_cases[1] = test_initialize_searchstate_defaults_and_clamp;
@@ -348,6 +543,10 @@ int search_tests(){
     test_cases[12] = test_iddfs_uninterrupted_tracks_completed_depth;
     test_cases[13] = test_iddfs_stop_before_first_iteration_uses_fallback;
     test_cases[14] = test_iddfs_resets_completion_fields_per_request;
+    test_cases[15] = test_search_threefold_draw_score;
+    test_cases[16] = test_search_fifty_move_draw_score;
+    test_cases[17] = test_search_insufficient_material_draw_score;
+    test_cases[18] = test_tt_does_not_force_draw_across_history_contexts;
 
     test_case_names[0] = "test_initialize_searchstate_null";
     test_case_names[1] = "test_initialize_searchstate_defaults_and_clamp";
@@ -364,6 +563,10 @@ int search_tests(){
     test_case_names[12] = "test_iddfs_uninterrupted_tracks_completed_depth";
     test_case_names[13] = "test_iddfs_stop_before_first_iteration_uses_fallback";
     test_case_names[14] = "test_iddfs_resets_completion_fields_per_request";
+    test_case_names[15] = "test_search_threefold_draw_score";
+    test_case_names[16] = "test_search_fifty_move_draw_score";
+    test_case_names[17] = "test_search_insufficient_material_draw_score";
+    test_case_names[18] = "test_tt_does_not_force_draw_across_history_contexts";
 
     return run_tests(test_cases, test_case_names, num_tests);
 }

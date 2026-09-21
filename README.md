@@ -1,22 +1,22 @@
 # Build
 Requires GCC.
-- `make game` builds `springer.exe`.
+- `make game` builds `springer.exe`
 - `make tests` builds `springer_tests.exe`
 - `make benchmarks` builds `search_benchmarks.exe`
 - `make clean` removes the `obj` directory and built executables.
+- `make uci_mode` builds `uci_mode.exe`
 
 # Features
 - Full move generation (castling, en passant, promotion)
 - FEN position loading
 - Game status detection (checkmate, draw by fifty-move rule, draw by threefold repetition, draw by insufficient material, and stalemate)
-- Alpha-beta search with bounded quiescence and material-only evaluation
+- Iterative deepening depth-first search with alpha-beta pruning, bounded quiescence and material-only evaluation
 - Transposition table with Zobrist hashing and forward/backward incremental updates (age/depth replacement policy)
 - Search benchmarks with timing and node counts
+- Capability to have Springer initiate challenges and play on Lichess, through UCI mode and the springer_lichess.py script
 
 # To-Do
-- Iterative deepening depth-first search
 - Improved move ordering
-- Search-level draw detection
 - Improved evaluation
 - Multithreading
 

@@ -1,0 +1,20 @@
+[lichess]
+base_url = "https://lichess.org"
+
+[challenge]
+target_username = "bernstein-4ply"
+clock_limit_seconds = 600
+clock_increment_seconds = 5
+color = "random"
+
+[engine]
+path = "./uci_mode.exe"
+default_depth = 7
+
+[timing]
+fixed_think_ms = 2000
+min_think_ms = 50
+safety_buffer_ms = 200
+
+[logging]
+jsonl_file = "springer_lichess_log.jsonl"
