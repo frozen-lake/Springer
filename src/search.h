@@ -20,8 +20,13 @@ struct SearchState {
     int tt_exact_cutoffs;
     int tt_bound_cutoffs;
     int root_depth;
+    int completed_depth;
+    int completed_iterations;
     int max_depth;
     int* stop;
+    uint64_t draw_path_hashes[MAX_SEARCH_PLY];
+    int draw_path_edge_irreversible[MAX_SEARCH_PLY];
+    int draw_path_length;
     Move pv_table[MAX_SEARCH_PLY][MAX_SEARCH_PLY];
     int pv_lengths[MAX_SEARCH_PLY];
 };

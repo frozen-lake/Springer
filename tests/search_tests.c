@@ -18,6 +18,8 @@ int test_initialize_searchstate_defaults_and_clamp(){
     success = success && (state.tt == NULL);
     success = success && (state.nodes == 0);
     success = success && (state.root_depth == 0);
+    success = success && (state.completed_depth == 0);
+    success = success && (state.completed_iterations == 0);
     success = success && (state.max_depth == MAX_SEARCH_PLY);
     success = success && (state.stop == &stop);
     success = success && (state.pv_lengths[0] == 0);
@@ -42,6 +44,8 @@ int test_reset_searchstate(){
 
     state.nodes = 123;
     state.root_depth = 5;
+    state.completed_depth = 4;
+    state.completed_iterations = 4;
     state.pv_lengths[0] = 3;
     state.pv_table[0][0] = 1;
 
@@ -49,6 +53,8 @@ int test_reset_searchstate(){
 
     int success = (state.nodes == 0);
     success = success && (state.root_depth == 0);
+    success = success && (state.completed_depth == 0);
+    success = success && (state.completed_iterations == 0);
     success = success && (state.pv_lengths[0] == 0);
     success = success && (state.pv_table[0][0] == 0);
     success = success && (state.max_depth == 8);
@@ -175,6 +181,80 @@ int test_stopped_search_preserves_state(){
     return success;
 }
 
+int test_iddfs_uninterrupted_tracks_completed_depth(){
+    Game* game = create_game();
+    if(game == NULL){
+        return 0;
+    }
+    initialize_game(game);
+
+    BoardState state_before = game->state;
+    SearchState search_state = (SearchState){0};
+    int stop = 0;
+    int success = initialize_searchstate(&search_state, NULL, 3, &stop);
+
+    Move best_move = search_best_move(game, &search_state);
+
+    success = success && best_move != 0;
+    success = success && is_legal_player_move(game, best_move);
+    success = success && (search_state.completed_depth == 3);
+    success = success && (search_state.completed_iterations == 3);
+    success = success && memcmp(&state_before, &game->state, sizeof(state_before)) == 0;
+
+    destroy_searchstate(&search_state);
+    destroy_game(game);
+    return success;
+}
+
+int test_iddfs_stop_before_first_iteration_uses_fallback(){
+    Game* game = create_game();
+    if(game == NULL){
+        return 0;
+    }
+    initialize_game(game);
+
+    BoardState state_before = game->state;
+    SearchState search_state = (SearchState){0};
+    int stop = 1;
+    int success = initialize_searchstate(&search_state, NULL, 4, &stop);
+
+    Move best_move = search_best_move(game, &search_state);
+
+    success = success && best_move != 0;
+    success = success && is_legal_player_move(game, best_move);
+    success = success && (search_state.completed_depth == 0);
+    success = success && (search_state.completed_iterations == 0);
+    success = success && memcmp(&state_before, &game->state, sizeof(state_before)) == 0;
+
+    destroy_searchstate(&search_state);
+    destroy_game(game);
+    return success;
+}
+
+int test_iddfs_resets_completion_fields_per_request(){
+    Game* game = create_game();
+    if(game == NULL){
+        return 0;
+    }
+    initialize_game(game);
+
+    SearchState search_state = (SearchState){0};
+    int stop = 1;
+    int success = initialize_searchstate(&search_state, NULL, 4, &stop);
+
+    search_state.completed_depth = 99;
+    search_state.completed_iterations = 99;
+
+    (void)search_best_move(game, &search_state);
+
+    success = success && (search_state.completed_depth == 0);
+    success = success && (search_state.completed_iterations == 0);
+
+    destroy_searchstate(&search_state);
+    destroy_game(game);
+    return success;
+}
+
 int test_tt_mate_score_normalization(){
     int positive_mate = MATE_SCORE - 7;
     int negative_mate = -MATE_SCORE + 7;
@@ -248,10 +328,10 @@ int test_tt_reuses_completed_search(){
 }
 
 int search_tests(){
-    int num_tests = 12;
-
-	int (*test_cases[num_tests])();
-	char* test_case_names[num_tests];
+    int num_tests = 15;
+    
+    int (*test_cases[num_tests])();
+    char* test_case_names[num_tests];
 
     test_cases[0] = test_initialize_searchstate_null;
     test_cases[1] = test_initialize_searchstate_defaults_and_clamp;
@@ -265,6 +345,9 @@ int search_tests(){
     test_cases[9] = test_tt_mate_score_normalization;
     test_cases[10] = test_tt_exact_entry_avoids_search;
     test_cases[11] = test_tt_reuses_completed_search;
+    test_cases[12] = test_iddfs_uninterrupted_tracks_completed_depth;
+    test_cases[13] = test_iddfs_stop_before_first_iteration_uses_fallback;
+    test_cases[14] = test_iddfs_resets_completion_fields_per_request;
 
     test_case_names[0] = "test_initialize_searchstate_null";
     test_case_names[1] = "test_initialize_searchstate_defaults_and_clamp";
@@ -278,6 +361,9 @@ int search_tests(){
 	test_case_names[9] = "test_tt_mate_score_normalization";
 	test_case_names[10] = "test_tt_exact_entry_avoids_search";
 	test_case_names[11] = "test_tt_reuses_completed_search";
+    test_case_names[12] = "test_iddfs_uninterrupted_tracks_completed_depth";
+    test_case_names[13] = "test_iddfs_stop_before_first_iteration_uses_fallback";
+    test_case_names[14] = "test_iddfs_resets_completion_fields_per_request";
 
     return run_tests(test_cases, test_case_names, num_tests);
 }
