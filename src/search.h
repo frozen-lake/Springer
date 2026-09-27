@@ -1,12 +1,16 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 
+#include <time.h>
+
 #include "transposition_table.h"
+#include "evaluate.h"
 
 #define MAX_SEARCH_PLY 128
 #define MAX_QUIESCENCE_PLY 10
 #define INF 50000
 #define MATE_SCORE 49000
+#define TIMED_MODE 1
 
 typedef struct SearchState SearchState;
 
@@ -22,8 +26,13 @@ struct SearchState {
     int root_depth;
     int completed_depth;
     int completed_iterations;
+    int completed_score;
+    int last_root_score;
+    int last_root_completed;
     int max_depth;
     int* stop;
+    int time_limited;
+    clock_t deadline;
     uint64_t draw_path_hashes[MAX_SEARCH_PLY];
     int draw_path_edge_irreversible[MAX_SEARCH_PLY];
     int draw_path_length;
@@ -33,7 +42,6 @@ struct SearchState {
 
 Move search_best_move(Game* game, SearchState* search_state);
 Move search_root(Game* game, SearchState* search_state, int depth);
-int evaluate(Game* game);
 int alpha_beta(SearchState* search_state, Game* game, int alpha, int beta, int depth_remaining, int ply);
 int quiesce(SearchState* search_state, Game* game, int alpha, int beta, int ply, int qply);
 int score_to_tt(int score, int ply);
@@ -45,5 +53,7 @@ void reset_searchstate(SearchState* search_state);
 void request_search_stop(SearchState* search_state);
 void clear_search_stop(SearchState* search_state);
 int is_search_stop_requested(SearchState* search_state);
+void set_search_time_limit(SearchState* search_state, int movetime_ms);
+void clear_search_time_limit(SearchState* search_state);
 
 #endif

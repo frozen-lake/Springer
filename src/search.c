@@ -2,9 +2,12 @@
 #include "move_gen.h"
 #include "board.h"
 #include "game.h"
+#include <stdlib.h>
+#include <time.h>
 
 static int PIECE_VALUES[8] = {0, 0, 100, 300, 300, 500, 900, 10000};
 #define DELTA_PRUNING_MARGIN 100
+#define TIME_CHECK_NODE_INTERVAL 4096
 
 typedef enum {
     DRAW_REASON_NONE = 0,
@@ -41,6 +44,7 @@ static int quiesce_internal(SearchState* search_state, Game* game, int alpha, in
     int ply, int qply, int entered_from_move, int edge_irreversible);
 static int alpha_beta_internal(SearchState* search_state, Game* game, int alpha, int beta,
     int depth_remaining, int ply, int entered_from_move, int edge_irreversible);
+static void check_time_limit(SearchState* search_state);
 
 static void clear_draw_path_storage(SearchState* search_state){
     if(search_state == NULL){
@@ -161,6 +165,9 @@ Move search_best_move(Game* game, SearchState* search_state){
 
     search_state->completed_depth = 0;
     search_state->completed_iterations = 0;
+    search_state->completed_score = 0;
+    search_state->last_root_score = 0;
+    search_state->last_root_completed = 0;
     search_state->nodes = 0;
     search_state->alpha_beta_nodes = 0;
     search_state->quiescence_nodes = 0;
@@ -209,6 +216,7 @@ Move search_best_move(Game* game, SearchState* search_state){
         }
         search_state->completed_depth = current_depth;
         search_state->completed_iterations += 1;
+        search_state->completed_score = search_state->last_root_score;
 
         if(is_search_stop_requested(search_state)){
             break;
@@ -262,6 +270,9 @@ static Move search_root_internal(Game* game, SearchState* search_state, int dept
         return 0;
     }
 
+    search_state->last_root_completed = 0;
+    search_state->last_root_score = 0;
+
     if(iteration_completed != NULL){
         *iteration_completed = 0;
     }
@@ -291,6 +302,7 @@ static Move search_root_internal(Game* game, SearchState* search_state, int dept
     prioritize_move(&moves, preferred_root_move);
 
     if(moves.size == 0){
+        search_state->last_root_completed = 1;
         if(iteration_completed != NULL){
             *iteration_completed = 1;
         }
@@ -337,6 +349,9 @@ static Move search_root_internal(Game* game, SearchState* search_state, int dept
         *iteration_completed = !interrupted;
     }
 
+    search_state->last_root_score = best;
+    search_state->last_root_completed = !interrupted;
+
     if(best_move == 0){
         search_state->pv_lengths[0] = 0;
     }
@@ -354,7 +369,12 @@ int initialize_searchstate(SearchState* search_state, TranspositionTable* tt, in
     search_state->root_depth = 0;
     search_state->completed_depth = 0;
     search_state->completed_iterations = 0;
+    search_state->completed_score = 0;
+    search_state->last_root_score = 0;
+    search_state->last_root_completed = 0;
     search_state->stop = stop;
+    search_state->time_limited = 0;
+    search_state->deadline = 0;
     search_state->alpha_beta_nodes = 0;
     search_state->quiescence_nodes = 0;
     search_state->tt_probes = 0;
@@ -393,6 +413,11 @@ void reset_searchstate(SearchState* search_state){
     search_state->root_depth = 0;
     search_state->completed_depth = 0;
     search_state->completed_iterations = 0;
+    search_state->completed_score = 0;
+    search_state->last_root_score = 0;
+    search_state->last_root_completed = 0;
+    search_state->time_limited = 0;
+    search_state->deadline = 0;
     clear_draw_path_storage(search_state);
     clear_pv_storage(search_state);
 }
@@ -418,21 +443,36 @@ int is_search_stop_requested(SearchState* search_state){
     return *(search_state->stop) != 0;
 }
 
-int evaluate(Game* game){
-    Board* board = &game->state;
-    int score = 0;
-    for(int i=0;i<64;i++){
-        uint64_t mask = U64_MASK(i);
-        if(board->pieces[White] & mask){
-            int piece = position_to_piece_number(board, i);
-            score += PIECE_VALUES[piece];
-        } else if(board->pieces[Black] & mask){
-            int piece = position_to_piece_number(board, i);
-            score -= PIECE_VALUES[piece];
-        }
+void set_search_time_limit(SearchState* search_state, int movetime_ms){
+    if(search_state == NULL){
+        return;
+    }
+    if(movetime_ms <= 0){
+        search_state->time_limited = 0;
+        return;
     }
 
-    return game->state.side_to_move == White ? score : -score;
+    search_state->deadline = clock() + (clock_t)(((double)movetime_ms * CLOCKS_PER_SEC) / 1000.0);
+    search_state->time_limited = 1;
+}
+
+void clear_search_time_limit(SearchState* search_state){
+    if(search_state == NULL){
+        return;
+    }
+    search_state->time_limited = 0;
+}
+
+static void check_time_limit(SearchState* search_state){
+    if(search_state == NULL || !search_state->time_limited){
+        return;
+    }
+    if(search_state->nodes % TIME_CHECK_NODE_INTERVAL != 0){
+        return;
+    }
+    if(clock() >= search_state->deadline){
+        request_search_stop(search_state);
+    }
 }
 
 int score_to_tt(int score, int ply){
@@ -501,6 +541,7 @@ static int quiesce_internal(SearchState* search_state, Game* game, int alpha, in
     if(search_state != NULL){
         search_state->nodes += 1;
         search_state->quiescence_nodes += 1;
+        check_time_limit(search_state);
         if(entered_from_move){
             draw_path_push(search_state, game->state.zobrist_hash, edge_irreversible);
             pushed_context = 1;
@@ -625,6 +666,7 @@ static int alpha_beta_internal(SearchState* search_state, Game* game, int alpha,
     if(search_state != NULL){
         search_state->nodes += 1;
         search_state->alpha_beta_nodes += 1;
+        check_time_limit(search_state);
         if(entered_from_move){
             draw_path_push(search_state, key, edge_irreversible);
             pushed_context = 1;

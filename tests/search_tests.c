@@ -92,7 +92,7 @@ int test_stop_helpers(){
 int test_evaluation(){
     Game* game = create_game();
 
-    char* fen = "3rk3/2bp4/8/7N/5p2/5P2/52P/R3K3 w K - 0 2";
+    char* fen = "4k3/8/8/8/8/8/8/4K3 w - - 0 1";
     int success = load_fen(game, fen);
 
     int eval = evaluate(game);

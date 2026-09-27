@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "attack_data.h"
 #include "search.h"
@@ -193,14 +192,6 @@ static UciGoParams parse_go_params(const char* args, int default_depth){
     }
 
     return params;
-}
-
-static int elapsed_ms_since(clock_t start){
-    clock_t now = clock();
-    if(now < start){
-        return 0;
-    }
-    return (int)(((double)(now - start) * 1000.0) / (double)CLOCKS_PER_SEC);
 }
 
 static int parse_uci_square(char file, char rank){
@@ -463,6 +454,9 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
             char move_text[UCI_MOVE_STR_LEN] = "0000";
             int old_max_depth = search_state.max_depth;
             int requested_max_depth = depth;
+            int reported_depth = 0;
+            int reported_score = 0;
+            int has_reported_score = 0;
 
             clear_search_stop(&search_state);
 
@@ -481,13 +475,14 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
             search_state.max_depth = requested_max_depth;
 
             if(movetime_ms > 0){
-                clock_t start = clock();
                 int max_depth = requested_max_depth;
+
+                set_search_time_limit(&search_state, movetime_ms);
 
                 for(int current_depth = 1; current_depth <= max_depth; current_depth++){
                     Move candidate;
 
-                    if(best_move != 0 && elapsed_ms_since(start) >= movetime_ms){
+                    if(is_search_stop_requested(&search_state)){
                         break;
                     }
 
@@ -496,18 +491,31 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
                         break;
                     }
 
-                    best_move = candidate;
-
-                    if(elapsed_ms_since(start) >= movetime_ms){
+                    if(!search_state.last_root_completed){
                         break;
                     }
+
+                    best_move = candidate;
+                    reported_depth = current_depth;
+                    reported_score = search_state.last_root_score;
+                    has_reported_score = 1;
                 }
+
+                clear_search_time_limit(&search_state);
             } else {
                 search_state.root_depth = depth;
                 best_move = search_best_move(game, &search_state);
+                if(search_state.completed_depth > 0){
+                    reported_depth = search_state.completed_depth;
+                    reported_score = search_state.completed_score;
+                    has_reported_score = 1;
+                }
             }
             search_state.max_depth = old_max_depth;
 
+            if(has_reported_score){
+                fprintf(out, "info depth %d score cp %d\n", reported_depth, reported_score);
+            }
             if(best_move != 0){
                 (void)move_to_uci(best_move, move_text, sizeof(move_text));
             }

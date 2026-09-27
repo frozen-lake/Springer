@@ -147,7 +147,14 @@ class LichessClient:
 		}
 		self.logger.log("lichess_api", "request", method="POST", path=path, payload=payload)
 		resp = self.session.post(url, data=payload, timeout=30)
-		self.logger.log("lichess_api", "response", method="POST", path=path, status=resp.status_code)
+		self.logger.log(
+			"lichess_api",
+			"response",
+			method="POST",
+			path=path,
+			status=resp.status_code,
+			body=resp.text,
+		)
 		resp.raise_for_status()
 		return resp.json()
 
@@ -281,20 +288,49 @@ class UciEngine:
 		self.send("isready")
 		self.wait_for_token("readyok", timeout_seconds=30)
 
-	def compute_bestmove(self, position_cmd: str, movetime_ms: int, depth: int) -> str:
+	def compute_bestmove(self, position_cmd: str, movetime_ms: int, depth: int) -> Dict[str, Any]:
 		self.send(position_cmd)
 		if movetime_ms > 0:
 			self.send(f"go movetime {movetime_ms}")
 		else:
 			self.send(f"go depth {depth}")
 
+		completed_depth: Optional[int] = None
+		eval_cp: Optional[int] = None
+
 		while True:
 			line = self.read_line(timeout_seconds=max(5.0, movetime_ms / 1000.0 + 5.0))
+			if line.startswith("info "):
+				parts = line.split()
+				for i, token in enumerate(parts):
+					if token == "depth" and i + 1 < len(parts):
+						try:
+							completed_depth = int(parts[i + 1])
+						except ValueError:
+							pass
+					if token == "score" and i + 2 < len(parts):
+						score_kind = parts[i + 1]
+						score_value = parts[i + 2]
+						if score_kind == "cp":
+							try:
+								eval_cp = int(score_value)
+							except ValueError:
+								pass
+				continue
+
 			if line.startswith("bestmove "):
 				parts = line.split()
 				if len(parts) >= 2:
-					return parts[1]
-				return "0000"
+					return {
+						"bestmove": parts[1],
+						"completed_depth": completed_depth,
+						"eval_cp": eval_cp,
+					}
+				return {
+					"bestmove": "0000",
+					"completed_depth": completed_depth,
+					"eval_cp": eval_cp,
+				}
 
 
 class OperatorControl:
@@ -411,10 +447,8 @@ def play_single_game(client: LichessClient, engine: UciEngine, logger: JsonlLogg
 	our_color: Optional[str] = None
 	last_moves_text = ""
 	game_finished = False
-	pending_move: Optional[str] = None
-	pending_move_ply: Optional[int] = None
-	pending_move_retries = 0
-	max_pending_move_retries = 3
+	max_move_post_retries = 5
+	retry_delay_seconds = 10
 
 	for line in client.stream_game_lines(game_id):
 		event = parse_json_line(logger, line, "game")
@@ -468,29 +502,6 @@ def play_single_game(client: LichessClient, engine: UciEngine, logger: JsonlLogg
 		move_list = move_list_from_state(last_moves_text)
 		side_to_move = side_to_move_from_ply(len(move_list))
 
-		if pending_move is not None and pending_move_ply is not None:
-			if len(move_list) > pending_move_ply:
-				if move_list[-1] == pending_move:
-					logger.log(
-						"game",
-						"pending_move_confirmed",
-						game_id=game_id,
-						move=pending_move,
-						retries=pending_move_retries,
-					)
-				else:
-					logger.log(
-						"game",
-						"pending_move_superseded",
-						game_id=game_id,
-						move=pending_move,
-						retries=pending_move_retries,
-						last_move=move_list[-1],
-					)
-				pending_move = None
-				pending_move_ply = None
-				pending_move_retries = 0
-
 		if side_to_move != our_color:
 			continue
 
@@ -521,38 +532,25 @@ def play_single_game(client: LichessClient, engine: UciEngine, logger: JsonlLogg
 			move_count=len(move_list),
 		)
 
-		if pending_move is not None and pending_move_ply == len(move_list):
-			bestmove = pending_move
-			logger.log(
-				"decision",
-				"retry_pending_move",
-				game_id=game_id,
-				bestmove=bestmove,
-				retry_count=pending_move_retries,
-			)
-		else:
-			bestmove = engine.compute_bestmove(position_cmd, movetime_ms, cfg.default_depth)
-		logger.log("decision", "engine_bestmove", game_id=game_id, bestmove=bestmove)
+		engine_result = engine.compute_bestmove(position_cmd, movetime_ms, cfg.default_depth)
+		bestmove = str(engine_result.get("bestmove", "0000"))
+		completed_depth = engine_result.get("completed_depth")
+		eval_cp = engine_result.get("eval_cp")
+		logger.log(
+			"decision",
+			"engine_bestmove",
+			game_id=game_id,
+			bestmove=bestmove,
+			completed_depth=completed_depth,
+			eval_cp=eval_cp,
+		)
 
 		if bestmove in {"", "0000", "(none)"}:
 			logger.log("decision", "no_move_from_engine", game_id=game_id)
 			return
 
-		is_retrying_pending = pending_move is not None and pending_move_ply == len(move_list) and pending_move == bestmove
-
 		try:
 			client.make_move(game_id, bestmove)
-			if pending_move is not None and pending_move == bestmove and pending_move_ply == len(move_list):
-				logger.log(
-					"game",
-					"pending_move_posted",
-					game_id=game_id,
-					move=bestmove,
-					retries=pending_move_retries,
-				)
-			pending_move = None
-			pending_move_ply = None
-			pending_move_retries = 0
 		except requests.HTTPError as exc:
 			status_code = exc.response.status_code if exc.response is not None else None
 			response_text = exc.response.text if exc.response is not None else ""
@@ -564,48 +562,84 @@ def play_single_game(client: LichessClient, engine: UciEngine, logger: JsonlLogg
 				status=status_code,
 				response=response_text,
 			)
-			if is_retrying_pending:
-				logger.log(
-					"game",
-					"pending_move_retry_rejected",
-					game_id=game_id,
-					bestmove=bestmove,
-					status=status_code,
-					action="wait_for_next_state",
-				)
-				continue
 			if status_code == 400:
 				logger.log("game", "finished_or_desynced", game_id=game_id, action="stop_game_loop")
 				return
 			raise
 		except requests.RequestException as exc:
-			if pending_move is not None and pending_move == bestmove and pending_move_ply == len(move_list):
-				pending_move_retries += 1
-			else:
-				pending_move = bestmove
-				pending_move_ply = len(move_list)
-				pending_move_retries = 1
-
+			last_exc: Exception = exc
 			logger.log(
 				"game",
 				"move_post_transient_error",
 				game_id=game_id,
 				bestmove=bestmove,
-				retry_count=pending_move_retries,
-				max_retries=max_pending_move_retries,
+				retry_count=0,
+				max_retries=max_move_post_retries,
 				message=str(exc),
-				action="wait_for_next_state_and_retry",
+				action="retry_every_10s",
 			)
 
-			if pending_move_retries > max_pending_move_retries:
+			move_posted = False
+			for retry_index in range(1, max_move_post_retries + 1):
 				logger.log(
 					"game",
-					"move_post_retries_exhausted",
+					"move_post_retry_scheduled",
 					game_id=game_id,
 					bestmove=bestmove,
-					retry_count=pending_move_retries,
+					retry_count=retry_index,
+					max_retries=max_move_post_retries,
+					delay_seconds=retry_delay_seconds,
 				)
-				raise
+				time.sleep(retry_delay_seconds)
+
+				try:
+					client.make_move(game_id, bestmove)
+					logger.log(
+						"game",
+						"move_post_retry_succeeded",
+						game_id=game_id,
+						bestmove=bestmove,
+						retry_count=retry_index,
+					)
+					move_posted = True
+					break
+				except requests.HTTPError as retry_http_exc:
+					status_code = retry_http_exc.response.status_code if retry_http_exc.response is not None else None
+					response_text = retry_http_exc.response.text if retry_http_exc.response is not None else ""
+					logger.log(
+						"game",
+						"move_post_retry_rejected",
+						game_id=game_id,
+						bestmove=bestmove,
+						retry_count=retry_index,
+						status=status_code,
+						response=response_text,
+					)
+					last_exc = retry_http_exc
+					break
+				except requests.RequestException as retry_exc:
+					logger.log(
+						"game",
+						"move_post_retry_transient_error",
+						game_id=game_id,
+						bestmove=bestmove,
+						retry_count=retry_index,
+						max_retries=max_move_post_retries,
+						message=str(retry_exc),
+					)
+					last_exc = retry_exc
+
+			if move_posted:
+				continue
+
+			logger.log(
+				"game",
+				"move_post_retries_exhausted",
+				game_id=game_id,
+				bestmove=bestmove,
+				max_retries=max_move_post_retries,
+			)
+			raise last_exc
 
 			continue
 
