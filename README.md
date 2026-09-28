@@ -4,7 +4,7 @@ Requires GCC.
 - `make tests` builds `springer_tests.exe`
 - `make benchmarks` builds `search_benchmarks.exe`
 - `make clean` removes the `obj` directory and built executables.
-- `make uci_mode` builds `uci_mode.exe`
+- `make uci` builds `uci.exe`
 
 # Features
 - Full move generation (castling, en passant, promotion)

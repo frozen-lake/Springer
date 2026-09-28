@@ -3,7 +3,7 @@
 #include "tests.h"
 #include "../src/game.h"
 #include "../src/search.h"
-#include "../src/uci_adapter.h"
+#include "../src/uci.h"
 
 
 int test_initialize_searchstate_null(){

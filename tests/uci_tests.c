@@ -6,7 +6,7 @@
 #include "../src/board.h"
 #include "../src/game.h"
 #include "../src/move.h"
-#include "../src/uci_adapter.h"
+#include "../src/uci.h"
 
 int test_move_to_uci_basic(void){
     Game* game = create_game();

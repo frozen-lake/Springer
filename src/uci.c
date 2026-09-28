@@ -1,6 +1,7 @@
-#include "uci_adapter.h"
+#include "uci.h"
 
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +12,9 @@
 #include "move_gen.h"
 
 #define UCI_LINE_MAX 1024
+#define UCI_FIXED_THINK_MS 5000
+#define UCI_ZERO_INCREMENT_THINK_MS 100
+#define UCI_CLOCK_SAFETY_BUFFER_MS 200
 
 static char* skip_spaces(char* s){
     while(s != NULL && *s != '\0' && isspace((unsigned char)*s)){
@@ -49,6 +53,10 @@ typedef struct {
     int depth;
     int has_depth;
     int movetime_ms;
+    int wtime_ms;
+    int btime_ms;
+    int winc_ms;
+    int binc_ms;
 } UciGoParams;
 
 static int apply_uci_moves(Game* game, char* moves_text){
@@ -159,6 +167,10 @@ static UciGoParams parse_go_params(const char* args, int default_depth){
     params.depth = default_depth;
     params.has_depth = 0;
     params.movetime_ms = 0;
+    params.wtime_ms = -1;
+    params.btime_ms = -1;
+    params.winc_ms = -1;
+    params.binc_ms = -1;
 
     if(args == NULL){
         return params;
@@ -185,6 +197,29 @@ static UciGoParams parse_go_params(const char* args, int default_depth){
                 int parsed = atoi(value);
                 if(parsed > 0){
                     params.movetime_ms = parsed;
+                }
+            }
+        } else if(strcmp(token, "wtime") == 0 || strcmp(token, "btime") == 0 ||
+            strcmp(token, "winc") == 0 || strcmp(token, "binc") == 0){
+            int* clock_value = NULL;
+            char* value = strtok(NULL, " \t");
+            char* end = NULL;
+            long parsed;
+
+            if(strcmp(token, "wtime") == 0){
+                clock_value = &params.wtime_ms;
+            } else if(strcmp(token, "btime") == 0){
+                clock_value = &params.btime_ms;
+            } else if(strcmp(token, "winc") == 0){
+                clock_value = &params.winc_ms;
+            } else {
+                clock_value = &params.binc_ms;
+            }
+
+            if(value != NULL){
+                parsed = strtol(value, &end, 10);
+                if(end != value && *end == '\0' && parsed >= 0 && parsed <= INT_MAX){
+                    *clock_value = (int)parsed;
                 }
             }
         }
@@ -450,6 +485,8 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
             UciGoParams go_params = parse_go_params(args, search_state.max_depth);
             int depth = go_params.depth;
             int movetime_ms = go_params.movetime_ms;
+            int remaining_ms = -1;
+            int increment_ms = 0;
             Move best_move = 0;
             char move_text[UCI_MOVE_STR_LEN] = "0000";
             int old_max_depth = search_state.max_depth;
@@ -459,6 +496,40 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
             int has_reported_score = 0;
 
             clear_search_stop(&search_state);
+
+            if(movetime_ms <= 0){
+                if(game->state.side_to_move == White){
+                    remaining_ms = go_params.wtime_ms;
+                    if(go_params.winc_ms >= 0){
+                        increment_ms = go_params.winc_ms;
+                    }
+                } else {
+                    remaining_ms = go_params.btime_ms;
+                    if(go_params.binc_ms >= 0){
+                        increment_ms = go_params.binc_ms;
+                    }
+                }
+
+                if(remaining_ms >= 0){
+                    int remaining_budget_ms = remaining_ms > UCI_CLOCK_SAFETY_BUFFER_MS
+                        ? remaining_ms - UCI_CLOCK_SAFETY_BUFFER_MS : 1;
+
+                    if(increment_ms > 0){
+                        int increment_budget_ms = increment_ms > UCI_CLOCK_SAFETY_BUFFER_MS
+                            ? increment_ms - UCI_CLOCK_SAFETY_BUFFER_MS : 1;
+                        movetime_ms = UCI_FIXED_THINK_MS;
+                        if(increment_budget_ms < movetime_ms){
+                            movetime_ms = increment_budget_ms;
+                        }
+                    } else {
+                        movetime_ms = UCI_ZERO_INCREMENT_THINK_MS;
+                    }
+
+                    if(remaining_budget_ms < movetime_ms){
+                        movetime_ms = remaining_budget_ms;
+                    }
+                }
+            }
 
             if(movetime_ms > 0 && !go_params.has_depth){
                 requested_max_depth = MAX_SEARCH_PLY;
@@ -541,7 +612,7 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
     return status;
 }
 
-#ifdef UCI_MODE_MAIN
+#ifdef UCI_MAIN
 int main(void){
     return run_uci_loop(stdin, stdout, stderr) ? 0 : 1;
 }

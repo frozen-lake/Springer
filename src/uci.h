@@ -1,5 +1,5 @@
-#ifndef UCI_ADAPTER_H
-#define UCI_ADAPTER_H
+#ifndef UCI_H
+#define UCI_H
 
 #include <stdio.h>
 #include <stddef.h>

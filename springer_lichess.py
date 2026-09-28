@@ -88,7 +88,7 @@ def load_config(path: str) -> AppConfig:
 	if challenge_color not in {"white", "black", "random"}:
 		raise ValueError("challenge.color must be white, black, or random")
 
-	engine_path = str(engine.get("path", "./uci_mode.exe")).strip()
+	engine_path = str(engine.get("path", "./uci.exe")).strip()
 	default_depth = int(engine.get("default_depth", 4))
 	if default_depth <= 0:
 		raise ValueError("engine.default_depth must be > 0")
