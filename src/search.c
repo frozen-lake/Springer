@@ -3,6 +3,7 @@
 #include "board.h"
 #include "game.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <time.h>
 
 static int PIECE_VALUES[8] = {0, 0, 100, 300, 300, 500, 900, 10000};
@@ -45,6 +46,35 @@ static int quiesce_internal(SearchState* search_state, Game* game, int alpha, in
 static int alpha_beta_internal(SearchState* search_state, Game* game, int alpha, int beta,
     int depth_remaining, int ply, int entered_from_move, int edge_irreversible);
 static void check_time_limit(SearchState* search_state);
+
+static int now_ms(uint64_t* result){
+    if(result == NULL){
+        return 0;
+    }
+
+#ifdef _WIN32
+    {
+        clock_t current = clock();
+        if(current == (clock_t)-1){
+            perror("clock");
+            return 0;
+        }
+        *result = (uint64_t)current * 1000 / CLOCKS_PER_SEC;
+    }
+#else
+    {
+        struct timespec current;
+        if(clock_gettime(CLOCK_MONOTONIC, &current) != 0){
+            perror("clock_gettime");
+            return 0;
+        }
+        *result = (uint64_t)current.tv_sec * 1000
+            + (uint64_t)current.tv_nsec / 1000000;
+    }
+#endif
+
+    return 1;
+}
 
 static void clear_draw_path_storage(SearchState* search_state){
     if(search_state == NULL){
@@ -374,7 +404,7 @@ int initialize_searchstate(SearchState* search_state, TranspositionTable* tt, in
     search_state->last_root_completed = 0;
     search_state->stop = stop;
     search_state->time_limited = 0;
-    search_state->deadline = 0;
+    search_state->deadline_ms = 0;
     search_state->alpha_beta_nodes = 0;
     search_state->quiescence_nodes = 0;
     search_state->tt_probes = 0;
@@ -417,7 +447,7 @@ void reset_searchstate(SearchState* search_state){
     search_state->last_root_score = 0;
     search_state->last_root_completed = 0;
     search_state->time_limited = 0;
-    search_state->deadline = 0;
+    search_state->deadline_ms = 0;
     clear_draw_path_storage(search_state);
     clear_pv_storage(search_state);
 }
@@ -444,6 +474,8 @@ int is_search_stop_requested(SearchState* search_state){
 }
 
 void set_search_time_limit(SearchState* search_state, int movetime_ms){
+    uint64_t current_time_ms;
+
     if(search_state == NULL){
         return;
     }
@@ -452,7 +484,13 @@ void set_search_time_limit(SearchState* search_state, int movetime_ms){
         return;
     }
 
-    search_state->deadline = clock() + (clock_t)(((double)movetime_ms * CLOCKS_PER_SEC) / 1000.0);
+    if(!now_ms(&current_time_ms)){
+        search_state->time_limited = 0;
+        request_search_stop(search_state);
+        return;
+    }
+
+    search_state->deadline_ms = current_time_ms + (uint64_t)movetime_ms;
     search_state->time_limited = 1;
 }
 
@@ -464,13 +502,20 @@ void clear_search_time_limit(SearchState* search_state){
 }
 
 static void check_time_limit(SearchState* search_state){
+    uint64_t current_time_ms;
+
     if(search_state == NULL || !search_state->time_limited){
         return;
     }
     if(search_state->nodes % TIME_CHECK_NODE_INTERVAL != 0){
         return;
     }
-    if(clock() >= search_state->deadline){
+    if(!now_ms(&current_time_ms)){
+        search_state->time_limited = 0;
+        request_search_stop(search_state);
+        return;
+    }
+    if(current_time_ms >= search_state->deadline_ms){
         request_search_stop(search_state);
     }
 }

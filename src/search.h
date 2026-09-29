@@ -32,7 +32,7 @@ struct SearchState {
     int max_depth;
     int* stop;
     int time_limited;
-    clock_t deadline;
+    uint64_t deadline_ms;
     uint64_t draw_path_hashes[MAX_SEARCH_PLY];
     int draw_path_edge_irreversible[MAX_SEARCH_PLY];
     int draw_path_length;
