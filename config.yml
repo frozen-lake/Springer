@@ -1,0 +1,39 @@
+token: "provided-at-runtime"
+url: "https://lichess.org/"
+
+engine:
+  dir: "/opt/springer"
+  name: "springer-uci"
+  working_dir: "/tmp"
+  protocol: "uci"
+  ponder: false
+  uci_options: {}
+  polyglot:
+    enabled: false
+  draw_or_resign:
+    resign_enabled: false
+    offer_draw_enabled: false
+
+move_overhead: 1000
+quit_after_all_games_finish: false
+
+challenge:
+  concurrency: 1
+  accept_bot: true
+  only_bot: false
+  variants:
+    - standard
+  time_controls:
+    - bullet
+    - blitz
+    - rapid
+  modes:
+    - casual
+  min_base: 60
+  max_base: 1800
+  min_increment: 0
+  max_increment: 20
+  bullet_requires_increment: false
+
+matchmaking:
+  allow_matchmaking: false
