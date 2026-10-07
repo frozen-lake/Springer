@@ -11,7 +11,7 @@
 #include "transposition_table.h"
 #include "move_gen.h"
 
-#define UCI_LINE_MAX 1024
+#define UCI_LINE_MAX 16384
 #define UCI_FIXED_THINK_MS 5000
 #define UCI_ZERO_INCREMENT_THINK_MS 100
 #define UCI_CLOCK_SAFETY_BUFFER_MS 200
@@ -444,6 +444,18 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
     status = 1;
     while(fgets(line, sizeof(line), in) != NULL){
         char* cmd = line;
+        size_t line_length = strlen(line);
+
+        /* Discard the rest of an oversized line instead of running its tail as commands. */
+        if(line_length == sizeof(line) - 1 && line[line_length - 1] != '\n'){
+            int c;
+
+            fprintf(err, "uci warning: line too long, ignored\n");
+            while((c = fgetc(in)) != EOF && c != '\n'){
+            }
+            continue;
+        }
+
         strip_trailing_newline(cmd);
         cmd = skip_spaces(cmd);
         if(*cmd == '\0'){
@@ -557,7 +569,14 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
                         break;
                     }
 
+                    /* Depth 1 ignores the deadline so a tiny budget still yields a legal move. */
+                    if(current_depth == 1){
+                        search_state.time_limited = 0;
+                    }
                     candidate = search_root(game, &search_state, current_depth);
+                    if(current_depth == 1){
+                        search_state.time_limited = 1;
+                    }
                     if(candidate == 0){
                         break;
                     }
