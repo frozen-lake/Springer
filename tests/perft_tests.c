@@ -96,18 +96,75 @@ int test_perft_pins_and_promotions(void){
 		expected);
 }
 
+int test_perft_promotion_capture_position(void){
+	static const uint64_t expected[3] = {44, 1486, 62379};
+	return test_perft_position(
+		"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+		expected);
+}
+
+int test_perft_middlegame_position(void){
+	static const uint64_t expected[3] = {46, 2079, 89890};
+	return test_perft_position(
+		"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+		expected);
+}
+
+static int test_perft_depth(const char* fen, int depth, uint64_t expected){
+	Game* game = create_game();
+	if(game == NULL || !load_fen(game, (char*)fen)){
+		destroy_game(game);
+		return 0;
+	}
+
+	int success = perft(game, depth) == expected;
+	destroy_game(game);
+	return success;
+}
+
+int test_perft_deep_starting_position(void){
+	return test_perft_depth(
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 5, 4865609);
+}
+
+int test_perft_deep_kiwipete(void){
+	return test_perft_depth(
+		"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 4, 4085603);
+}
+
+int test_perft_deep_promotions_and_en_passant(void){
+	return test_perft_depth("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 5, 674624);
+}
+
+int test_perft_deep_pins_and_promotions(void){
+	return test_perft_depth(
+		"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 4, 422333);
+}
+
 int perft_tests(void){
-	int (*test_cases[4])(void) = {
+	int (*test_cases[10])(void) = {
 		test_perft_starting_position,
 		test_perft_kiwipete,
 		test_perft_promotions_and_en_passant,
-		test_perft_pins_and_promotions
+		test_perft_pins_and_promotions,
+		test_perft_promotion_capture_position,
+		test_perft_middlegame_position,
+		test_perft_deep_starting_position,
+		test_perft_deep_kiwipete,
+		test_perft_deep_promotions_and_en_passant,
+		test_perft_deep_pins_and_promotions
 	};
-	char* test_case_names[4] = {
+	char* test_case_names[10] = {
 		"test_perft_starting_position",
 		"test_perft_kiwipete",
 		"test_perft_promotions_and_en_passant",
-		"test_perft_pins_and_promotions"
+		"test_perft_pins_and_promotions",
+		"test_perft_promotion_capture_position",
+		"test_perft_middlegame_position",
+		"test_perft_deep_starting_position",
+		"test_perft_deep_kiwipete",
+		"test_perft_deep_promotions_and_en_passant",
+		"test_perft_deep_pins_and_promotions"
 	};
-	return run_tests(test_cases, test_case_names, 4);
+	return run_tests(test_cases, test_case_names, 10);
 }

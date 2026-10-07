@@ -10,7 +10,7 @@ Requires GCC.
 - Full move generation (castling, en passant, promotion)
 - FEN position loading
 - Game status detection (checkmate, draw by fifty-move rule, draw by threefold repetition, draw by insufficient material, and stalemate)
-- Iterative deepening depth-first search with alpha-beta pruning, bounded quiescence and material-only evaluation
+- Iterative deepening depth-first search with alpha-beta pruning, bounded quiescence and evaluation based on material, mobility and piece-square tables.
 - Transposition table with Zobrist hashing and forward/backward incremental updates (age/depth replacement policy)
 - Search benchmarks with timing and node counts
 - Capability to have Springer initiate challenges and play on Lichess, through UCI mode and the springer_lichess.py script
