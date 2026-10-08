@@ -18,7 +18,7 @@ move_overhead: 1000
 quit_after_all_games_finish: false
 
 challenge:
-  concurrency: 3
+  concurrency: 1
   accept_bot: true
   only_bot: false
   variants:

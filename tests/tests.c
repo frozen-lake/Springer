@@ -45,7 +45,7 @@ int test_load_fen(){
 	/* Bad FEN should return 0 */
 	success = success && !load_fen(game, "4k3/8/8/1n3p3/4P1Pp/8/8/3BK3 b - g3 0 1");
 
-	success = load_fen(game, "3rk2r/1p6/4p3/8/2N2p2/5P2/P3P1PP/R3K2R w KQk - 0 2");
+	success = success && load_fen(game, "3rk2r/1p6/4p3/8/2N2p2/5P2/P3P1PP/R3K2R w KQk - 0 2");
 	success = success && (game->state.castling_rights == 0b1101);
 
 	destroy_game(game);
