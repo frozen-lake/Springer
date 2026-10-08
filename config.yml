@@ -29,6 +29,11 @@ challenge:
     - rapid
   modes:
     - casual
+  # Springer-specific (enforced by extra_game_handlers.py): rated challenges from these
+  # users are declined, casual ones are still accepted. List the owner's own accounts
+  # here so they can never play rated games against the bot (boosting).
+  rated_block_list:
+    - derge
   min_base: 60
   max_base: 1800
   min_increment: 0

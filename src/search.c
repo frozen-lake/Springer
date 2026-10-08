@@ -350,7 +350,7 @@ static Move search_root_internal(Game* game, SearchState* search_state, int dept
         make_move_on_state(&game->state, move, &undo);
         int edge_irreversible = move_is_irreversible(move, &undo, &game->state);
 
-        int score = -alpha_beta_internal(search_state, game, -INF, INF,
+        int score = -alpha_beta_internal(search_state, game, -INF, -best,
             depth - 1, 1, 1, edge_irreversible);
 
         unmake_move_on_state(&game->state, move, &undo);

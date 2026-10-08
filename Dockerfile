@@ -22,6 +22,7 @@ WORKDIR /lichess-bot
 
 COPY --from=build --chmod=0755 /build/uci.exe /opt/springer/springer-uci
 COPY --chmod=0644 config.yml /lichess-bot/config/config.yml
+COPY --chmod=0644 extra_game_handlers.py /lichess-bot/extra_game_handlers.py
 RUN chmod 0755 /lichess-bot/config
 COPY --chmod=0644 LICENSE /opt/springer/LICENSE
 
