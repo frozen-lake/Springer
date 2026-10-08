@@ -1,5 +1,6 @@
 #include "uci_tests.h"
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -258,6 +259,19 @@ int test_uci_go_clock_uses_side_to_move(void){
         move, sizeof(move)) && strcmp(move, "0000") != 0;
 }
 
+int test_uci_clock_budget_formula(void){
+    int success = 1;
+
+    success = success && uci_clock_budget_ms(60000, 600) == 1950;
+    success = success && uci_clock_budget_ms(300000, 3000) == 9750;
+    success = success && uci_clock_budget_ms(60000, -1) == 1500;
+    success = success && uci_clock_budget_ms(5000, 0) == 200;
+    success = success && uci_clock_budget_ms(300, 0) == 100;
+    success = success && uci_clock_budget_ms(5, 0) == 1;
+    success = success && uci_clock_budget_ms(INT_MAX, INT_MAX) > 0;
+    return success;
+}
+
 /* A position command longer than the old 1024-character buffer must be applied in full. */
 int test_uci_long_position_command_is_fully_applied(void){
     static char input[4096];
@@ -290,7 +304,7 @@ int test_uci_oversized_line_is_ignored(void){
 }
 
 int uci_tests(void){
-    int (*test_cases[14])(void) = {
+    int (*test_cases[15])(void) = {
         test_move_to_uci_basic,
         test_move_to_uci_promotion,
         test_parse_uci_move_basic,
@@ -304,9 +318,10 @@ int uci_tests(void){
         test_uci_go_movetime_one_returns_move,
         test_uci_go_clock_uses_side_to_move,
         test_uci_long_position_command_is_fully_applied,
-        test_uci_oversized_line_is_ignored
+        test_uci_oversized_line_is_ignored,
+        test_uci_clock_budget_formula
     };
-    char* test_case_names[14] = {
+    char* test_case_names[15] = {
         "test_move_to_uci_basic",
         "test_move_to_uci_promotion",
         "test_parse_uci_move_basic",
@@ -320,8 +335,9 @@ int uci_tests(void){
         "test_uci_go_movetime_one_returns_move",
         "test_uci_go_clock_uses_side_to_move",
         "test_uci_long_position_command_is_fully_applied",
-        "test_uci_oversized_line_is_ignored"
+        "test_uci_oversized_line_is_ignored",
+        "test_uci_clock_budget_formula"
     };
 
-    return run_tests(test_cases, test_case_names, 14);
+    return run_tests(test_cases, test_case_names, 15);
 }

@@ -12,8 +12,8 @@
 #include "move_gen.h"
 
 #define UCI_LINE_MAX 16384
-#define UCI_FIXED_THINK_MS 5000
-#define UCI_ZERO_INCREMENT_THINK_MS 100
+#define UCI_MIN_THINK_MS 200
+#define UCI_REMAINING_TIME_DIVISOR 40
 #define UCI_CLOCK_SAFETY_BUFFER_MS 200
 
 static char* skip_spaces(char* s){
@@ -47,6 +47,32 @@ static int starts_with_token(const char* text, const char* token){
     }
 
     return text[token_len] == '\0' || isspace((unsigned char)text[token_len]);
+}
+
+int uci_clock_budget_ms(int remaining_ms, int increment_ms){
+    long long budget_ms;
+    long long max_budget_ms;
+
+    if(remaining_ms < 0){
+        remaining_ms = 0;
+    }
+    if(increment_ms < 0){
+        increment_ms = 0;
+    }
+
+    budget_ms = (long long)remaining_ms / UCI_REMAINING_TIME_DIVISOR
+        + (long long)increment_ms * 3 / 4;
+    if(budget_ms < UCI_MIN_THINK_MS){
+        budget_ms = UCI_MIN_THINK_MS;
+    }
+
+    max_budget_ms = remaining_ms > UCI_CLOCK_SAFETY_BUFFER_MS
+        ? remaining_ms - UCI_CLOCK_SAFETY_BUFFER_MS : 1;
+    if(budget_ms > max_budget_ms){
+        budget_ms = max_budget_ms;
+    }
+
+    return (int)budget_ms;
 }
 
 typedef struct {
@@ -523,23 +549,7 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
                 }
 
                 if(remaining_ms >= 0){
-                    int remaining_budget_ms = remaining_ms > UCI_CLOCK_SAFETY_BUFFER_MS
-                        ? remaining_ms - UCI_CLOCK_SAFETY_BUFFER_MS : 1;
-
-                    if(increment_ms > 0){
-                        int increment_budget_ms = increment_ms > UCI_CLOCK_SAFETY_BUFFER_MS
-                            ? increment_ms - UCI_CLOCK_SAFETY_BUFFER_MS : 1;
-                        movetime_ms = UCI_FIXED_THINK_MS;
-                        if(increment_budget_ms < movetime_ms){
-                            movetime_ms = increment_budget_ms;
-                        }
-                    } else {
-                        movetime_ms = UCI_ZERO_INCREMENT_THINK_MS;
-                    }
-
-                    if(remaining_budget_ms < movetime_ms){
-                        movetime_ms = remaining_budget_ms;
-                    }
+                    movetime_ms = uci_clock_budget_ms(remaining_ms, increment_ms);
                 }
             }
 
@@ -573,15 +583,13 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
                     if(current_depth == 1){
                         search_state.time_limited = 0;
                     }
-                    candidate = search_root(game, &search_state, current_depth);
+                    candidate = search_root_with_preferred_move(game, &search_state,
+                        current_depth, best_move);
                     if(current_depth == 1){
                         search_state.time_limited = 1;
                     }
-                    if(candidate == 0){
-                        break;
-                    }
 
-                    if(!search_state.last_root_completed){
+                    if(candidate == 0){
                         break;
                     }
 
@@ -589,6 +597,10 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
                     reported_depth = current_depth;
                     reported_score = search_state.last_root_score;
                     has_reported_score = 1;
+
+                    if(!search_state.last_root_completed){
+                        break;
+                    }
                 }
 
                 clear_search_time_limit(&search_state);

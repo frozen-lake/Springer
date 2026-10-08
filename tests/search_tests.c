@@ -522,8 +522,55 @@ int test_tt_does_not_force_draw_across_history_contexts(){
     return success;
 }
 
+int test_search_root_stopped_before_any_move_returns_zero(){
+    Game* game = create_game();
+    if(game == NULL){
+        return 0;
+    }
+    initialize_game(game);
+
+    BoardState state_before = game->state;
+    SearchState search_state = (SearchState){0};
+    int stop = 1;
+    int success = initialize_searchstate(&search_state, NULL, 3, &stop);
+
+    Move best_move = search_root(game, &search_state, 3);
+
+    success = success && best_move == 0;
+    success = success && !search_state.last_root_completed;
+    success = success && memcmp(&state_before, &game->state, sizeof(state_before)) == 0;
+
+    destroy_searchstate(&search_state);
+    destroy_game(game);
+    return success;
+}
+
+int test_search_root_bad_preferred_move_still_finds_mate(){
+    Game* game = create_game();
+    Move quiet_move = 0;
+    if(game == NULL || !load_fen(game, "7k/8/5KQ1/8/8/8/8/8 w - - 0 1")
+        || !parse_uci_move("g6g1", game, &quiet_move)){
+        destroy_game(game);
+        return 0;
+    }
+
+    SearchState search_state = (SearchState){0};
+    int stop = 0;
+    int success = initialize_searchstate(&search_state, NULL, 2, &stop);
+    Move best_move = search_root_with_preferred_move(game, &search_state, 2, quiet_move);
+
+    success = success && get_move_src(best_move) == G6;
+    success = success && get_move_dest(best_move) == G7;
+    success = success && search_state.last_root_completed;
+    success = success && search_state.last_root_score >= MATE_SCORE - MAX_SEARCH_PLY;
+
+    destroy_searchstate(&search_state);
+    destroy_game(game);
+    return success;
+}
+
 int search_tests(){
-    int num_tests = 19;
+    int num_tests = 21;
 
 	int (*test_cases[num_tests])();
 	char* test_case_names[num_tests];
@@ -547,6 +594,8 @@ int search_tests(){
     test_cases[16] = test_search_fifty_move_draw_score;
     test_cases[17] = test_search_insufficient_material_draw_score;
     test_cases[18] = test_tt_does_not_force_draw_across_history_contexts;
+    test_cases[19] = test_search_root_stopped_before_any_move_returns_zero;
+    test_cases[20] = test_search_root_bad_preferred_move_still_finds_mate;
 
     test_case_names[0] = "test_initialize_searchstate_null";
     test_case_names[1] = "test_initialize_searchstate_defaults_and_clamp";
@@ -567,6 +616,8 @@ int search_tests(){
     test_case_names[16] = "test_search_fifty_move_draw_score";
     test_case_names[17] = "test_search_insufficient_material_draw_score";
     test_case_names[18] = "test_tt_does_not_force_draw_across_history_contexts";
+    test_case_names[19] = "test_search_root_stopped_before_any_move_returns_zero";
+    test_case_names[20] = "test_search_root_bad_preferred_move_still_finds_mate";
 
     return run_tests(test_cases, test_case_names, num_tests);
 }

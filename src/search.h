@@ -42,6 +42,8 @@ struct SearchState {
 
 Move search_best_move(Game* game, SearchState* search_state);
 Move search_root(Game* game, SearchState* search_state, int depth);
+Move search_root_with_preferred_move(Game* game, SearchState* search_state, int depth,
+    Move preferred_move);
 int alpha_beta(SearchState* search_state, Game* game, int alpha, int beta, int depth_remaining, int ply);
 int quiesce(SearchState* search_state, Game* game, int alpha, int beta, int ply, int qply);
 int score_to_tt(int score, int ply);

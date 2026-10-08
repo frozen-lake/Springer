@@ -291,6 +291,11 @@ Move search_root(Game* game, SearchState* search_state, int depth){
     return search_root_internal(game, search_state, depth, 0, NULL);
 }
 
+Move search_root_with_preferred_move(Game* game, SearchState* search_state, int depth,
+    Move preferred_move){
+    return search_root_internal(game, search_state, depth, preferred_move, NULL);
+}
+
 static Move search_root_internal(Game* game, SearchState* search_state, int depth,
     Move preferred_root_move, int* iteration_completed){
     if(game == NULL || search_state == NULL){
@@ -342,6 +347,7 @@ static Move search_root_internal(Game* game, SearchState* search_state, int dept
     Move best_move = moves.moves[0];
     int best = -INF;
     int interrupted = 0;
+    int searched_moves = 0;
 
     for(int i = 0; i < moves.size; i++){
         Move move = moves.moves[i];
@@ -354,6 +360,13 @@ static Move search_root_internal(Game* game, SearchState* search_state, int dept
             depth - 1, 1, 1, edge_irreversible);
 
         unmake_move_on_state(&game->state, move, &undo);
+
+        /* A subtree cut short by the stop flag returns an unreliable score, so discard it. */
+        if(is_search_stop_requested(search_state)){
+            interrupted = 1;
+            break;
+        }
+        searched_moves += 1;
 
         if(score > best){
             best = score;
@@ -368,11 +381,11 @@ static Move search_root_internal(Game* game, SearchState* search_state, int dept
                 search_state->pv_lengths[0] = MAX_SEARCH_PLY;
             }
         }
+    }
 
-        if(is_search_stop_requested(search_state)){
-            interrupted = 1;
-            break;
-        }
+    /* Stopped before any root move was fully searched: there is no result for this depth. */
+    if(searched_moves == 0){
+        best_move = 0;
     }
 
     if(iteration_completed != NULL){
