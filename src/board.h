@@ -42,7 +42,7 @@ typedef struct {
 	int8_t king_sq[2];
 	int8_t en_passant;
 	uint8_t castling_rights;
-	uint8_t halfmove_clock;
+	uint16_t halfmove_clock;
 	uint8_t side_to_move;
 } BoardState;
 
@@ -50,7 +50,7 @@ typedef struct {
 	uint64_t zobrist_hash;
 	int8_t en_passant;
 	uint8_t castling_rights;
-	uint8_t halfmove_clock;
+	uint16_t halfmove_clock;
 } UndoInfo;
 
 typedef BoardState Board;

@@ -66,7 +66,7 @@ int test_load_fen_invalid(){
 	int side_before = game->state.side_to_move;
 	int en_passant_before = game->state.en_passant;
 	uint8_t castling_before = game->state.castling_rights;
-	uint8_t halfmove_before = game->state.halfmove_clock;
+	uint16_t halfmove_before = game->state.halfmove_clock;
 	int8_t white_king_before = game->state.king_sq[White];
 	int8_t black_king_before = game->state.king_sq[Black];
 	uint64_t zobrist_before = game->state.zobrist_hash;

@@ -265,12 +265,12 @@ static int load_fen_internal(Game* game, char* str, unsigned int flags){
 
 	unsigned long halfmove_clock;
 	unsigned long fullmove_number;
-	if(!parse_unsigned_field(fields[4], UINT8_MAX, &halfmove_clock)
+	if(!parse_unsigned_field(fields[4], UINT16_MAX, &halfmove_clock)
 		|| !parse_unsigned_field(fields[5], ULONG_MAX, &fullmove_number)
 		|| fullmove_number == 0){
 		return 0;
 	}
-	board->halfmove_clock = (uint8_t)halfmove_clock;
+	board->halfmove_clock = (uint16_t)halfmove_clock;
 
 	initialize_zobrist_keys();
 	compute_zobrist_hash(board);
