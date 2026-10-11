@@ -313,8 +313,69 @@ int test_uci_oversized_line_is_ignored(void){
         && (move[1] == '7' || move[1] == '8');
 }
 
+/* A 17,700-ply game (8,850 moves) must be applied in full, checked by the resulting FEN. */
+int test_uci_max_length_game_is_fully_applied(void){
+    static char args[UCI_LINE_MAX];
+    char fen[128];
+    size_t length = (size_t)snprintf(args, sizeof(args), "startpos moves");
+    Game* game = create_game();
+    int success;
+
+    if(game == NULL){
+        return 0;
+    }
+
+    /* Each four-ply cycle returns to the start position. 4,425 cycles is 17,700 plies. */
+    for(int i = 0; i < 4425; i++){
+        length += (size_t)snprintf(args + length, sizeof(args) - length,
+            " g1f3 g8f6 f3g1 f6g8");
+    }
+
+    success = handle_position_command(game, args);
+    success = success && save_fen(game, fen, sizeof(fen));
+    success = success && strcmp(fen,
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 17700 8851") == 0;
+
+    destroy_game(game);
+    return success;
+}
+
+/* A position line of UCI_LINE_MAX - 2 characters plus its newline is the longest that fits, and must be applied. */
+int test_uci_line_at_limit_is_accepted(void){
+    static char input[UCI_LINE_MAX + 64];
+    char move[16];
+    const char* prefix = "position startpos moves e2e4";
+    size_t prefix_length = strlen(prefix);
+
+    memcpy(input, prefix, prefix_length);
+    memset(input + prefix_length, ' ', UCI_LINE_MAX - 2 - prefix_length);
+    snprintf(input + UCI_LINE_MAX - 2, sizeof(input) - (UCI_LINE_MAX - 2),
+        "\ngo depth 1\nquit\n");
+
+    /* Black is to move after e2e4, so the reply comes from a black piece. */
+    return uci_bestmove(input, move, sizeof(move))
+        && (move[1] == '7' || move[1] == '8');
+}
+
+/* One character past the longest line that fits. The line is dropped, leaving the start position. */
+int test_uci_line_one_past_limit_is_ignored(void){
+    static char input[UCI_LINE_MAX + 64];
+    char move[16];
+    const char* prefix = "position startpos moves e2e4";
+    size_t prefix_length = strlen(prefix);
+
+    memcpy(input, prefix, prefix_length);
+    memset(input + prefix_length, ' ', UCI_LINE_MAX - 1 - prefix_length);
+    snprintf(input + UCI_LINE_MAX - 1, sizeof(input) - (UCI_LINE_MAX - 1),
+        "\ngo depth 1\nquit\n");
+
+    /* With the start position still in place, White is to move. */
+    return uci_bestmove(input, move, sizeof(move))
+        && (move[1] == '1' || move[1] == '2');
+}
+
 int uci_tests(void){
-    int (*test_cases[15])(void) = {
+    int (*test_cases[18])(void) = {
         test_move_to_uci_basic,
         test_move_to_uci_promotion,
         test_parse_uci_move_basic,
@@ -329,9 +390,12 @@ int uci_tests(void){
         test_uci_go_clock_uses_side_to_move,
         test_uci_long_position_command_is_fully_applied,
         test_uci_oversized_line_is_ignored,
+        test_uci_max_length_game_is_fully_applied,
+        test_uci_line_at_limit_is_accepted,
+        test_uci_line_one_past_limit_is_ignored,
         test_uci_clock_budget_formula
     };
-    char* test_case_names[15] = {
+    char* test_case_names[18] = {
         "test_move_to_uci_basic",
         "test_move_to_uci_promotion",
         "test_parse_uci_move_basic",
@@ -346,8 +410,11 @@ int uci_tests(void){
         "test_uci_go_clock_uses_side_to_move",
         "test_uci_long_position_command_is_fully_applied",
         "test_uci_oversized_line_is_ignored",
+        "test_uci_max_length_game_is_fully_applied",
+        "test_uci_line_at_limit_is_accepted",
+        "test_uci_line_one_past_limit_is_ignored",
         "test_uci_clock_budget_formula"
     };
 
-    return run_tests(test_cases, test_case_names, 15);
+    return run_tests(test_cases, test_case_names, 18);
 }

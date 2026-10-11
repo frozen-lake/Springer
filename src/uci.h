@@ -8,6 +8,9 @@
 
 #define UCI_MOVE_STR_LEN 6
 
+/* 8,850 moves = 17,700 plies at 5 bytes each ("e2e4 "), plus 1 byte per promotion (at most 16), plus a ~110-byte FEN prefix: at most 88,626 bytes. 96 KiB (98,304 bytes) leaves room. */
+#define UCI_LINE_MAX (96 * 1024)
+
 int move_to_uci(Move move, char* out, size_t out_size);
 int parse_uci_move(const char* uci, Game* game, Move* out_move);
 
