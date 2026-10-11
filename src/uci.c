@@ -439,7 +439,7 @@ int uci_to_simplified_algebraic(const char* uci, Game* game, char* out, size_t o
 
 // Run Springer in UCI mode over stdin/stdout.
 int run_uci_loop(FILE* in, FILE* out, FILE* err){
-    char line[UCI_LINE_MAX];
+    char* line = NULL;
     Game* game = NULL;
     TranspositionTable tt = (TranspositionTable){0};
     SearchState search_state = (SearchState){0};
@@ -450,11 +450,18 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
         return 0;
     }
 
+    line = malloc(UCI_LINE_MAX);
+    if(line == NULL){
+        fprintf(err, "uci error: unable to allocate input buffer\n");
+        return 0;
+    }
+
     initialize_attack_data();
 
     game = create_game();
     if(game == NULL){
         fprintf(err, "uci error: unable to create game\n");
+        free(line);
         return 0;
     }
     initialize_game(game);
@@ -464,16 +471,17 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
         fprintf(err, "uci error: unable to initialize search state\n");
         tt_free(&tt);
         destroy_game(game);
+        free(line);
         return 0;
     }
 
     status = 1;
-    while(fgets(line, sizeof(line), in) != NULL){
+    while(fgets(line, UCI_LINE_MAX, in) != NULL){
         char* cmd = line;
         size_t line_length = strlen(line);
 
         /* Discard the rest of an oversized line instead of running its tail as commands. */
-        if(line_length == sizeof(line) - 1 && line[line_length - 1] != '\n'){
+        if(line_length == UCI_LINE_MAX - 1 && line[line_length - 1] != '\n'){
             int c;
 
             fprintf(err, "uci warning: line too long, ignored\n");
@@ -640,6 +648,7 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
     destroy_searchstate(&search_state);
     tt_free(&tt);
     destroy_game(game);
+    free(line);
     return status;
 }
 
