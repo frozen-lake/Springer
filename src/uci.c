@@ -84,6 +84,7 @@ typedef struct {
     int btime_ms;
     int winc_ms;
     int binc_ms;
+    int alloc_failed;
 } UciGoParams;
 
 static int apply_uci_moves(Game* game, char* moves_text){
@@ -109,16 +110,31 @@ static int apply_uci_moves(Game* game, char* moves_text){
     return 1;
 }
 
+static int apply_position_args(Game* game, const char* args, char* buffer);
+
 int handle_position_command(Game* game, const char* args){
-    char buffer[UCI_LINE_MAX];
-    char* cursor;
-    char* moves_marker;
+    char* buffer;
+    int result;
 
     if(game == NULL || args == NULL){
         return 0;
     }
 
-    if(strlen(args) >= sizeof(buffer)){
+    buffer = malloc(UCI_LINE_MAX);
+    if(buffer == NULL){
+        return 0;
+    }
+
+    result = apply_position_args(game, args, buffer);
+    free(buffer);
+    return result;
+}
+
+static int apply_position_args(Game* game, const char* args, char* buffer){
+    char* cursor;
+    char* moves_marker;
+
+    if(strlen(args) >= UCI_LINE_MAX){
         return 0;
     }
 
@@ -187,7 +203,7 @@ int handle_position_command(Game* game, const char* args){
 }
 
 static UciGoParams parse_go_params(const char* args, int default_depth){
-    char buffer[UCI_LINE_MAX];
+    char* buffer;
     char* token;
     UciGoParams params;
 
@@ -198,11 +214,18 @@ static UciGoParams parse_go_params(const char* args, int default_depth){
     params.btime_ms = -1;
     params.winc_ms = -1;
     params.binc_ms = -1;
+    params.alloc_failed = 0;
 
     if(args == NULL){
         return params;
     }
-    if(strlen(args) >= sizeof(buffer)){
+    if(strlen(args) >= UCI_LINE_MAX){
+        return params;
+    }
+
+    buffer = malloc(UCI_LINE_MAX);
+    if(buffer == NULL){
+        params.alloc_failed = 1;
         return params;
     }
 
@@ -253,6 +276,7 @@ static UciGoParams parse_go_params(const char* args, int default_depth){
         token = strtok(NULL, " \t");
     }
 
+    free(buffer);
     return params;
 }
 
@@ -546,6 +570,13 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
             int reported_depth = 0;
             int reported_score = 0;
             int has_reported_score = 0;
+
+            if(go_params.alloc_failed){
+                fprintf(out, "info string unable to allocate go parameters\n");
+                fprintf(out, "bestmove 0000\n");
+                fflush(out);
+                continue;
+            }
 
             clear_search_stop(&search_state);
 
