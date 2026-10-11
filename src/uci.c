@@ -510,6 +510,8 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
         if(line_length == UCI_LINE_MAX - 1 && line[line_length - 1] != '\n'){
             int c;
 
+            invalid_position = 1;
+            invalid_reason = "line too long";
             fprintf(err, "uci warning: line too long, ignored\n");
             while((c = fgetc(in)) != EOF && c != '\n'){
             }
