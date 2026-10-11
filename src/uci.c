@@ -445,6 +445,7 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
     SearchState search_state = (SearchState){0};
     int stop = 0;
     int status = 0;
+    int invalid_position = 0;
 
     if(in == NULL || out == NULL || err == NULL){
         return 0;
@@ -512,6 +513,7 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
 
         if(strcmp(cmd, "ucinewgame") == 0){
             initialize_game(game);
+            invalid_position = 0;
             tt_clear(&tt);
             clear_search_stop(&search_state);
             reset_searchstate(&search_state);
@@ -520,7 +522,10 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
 
         if(starts_with_token(cmd, "position")){
             char* args = skip_spaces(cmd + strlen("position"));
-            if(!handle_position_command(game, args)){
+            if(handle_position_command(game, args)){
+                invalid_position = 0;
+            } else {
+                invalid_position = 1;
                 fprintf(err, "uci warning: invalid position command\n");
             }
             continue;
