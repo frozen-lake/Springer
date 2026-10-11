@@ -108,7 +108,7 @@ static int apply_uci_moves(Game* game, char* moves_text){
     return 1;
 }
 
-static int handle_position_command(Game* game, const char* args){
+int handle_position_command(Game* game, const char* args){
     char buffer[UCI_LINE_MAX];
     char* cursor;
     char* moves_marker;

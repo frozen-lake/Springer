@@ -11,6 +11,7 @@
 int move_to_uci(Move move, char* out, size_t out_size);
 int parse_uci_move(const char* uci, Game* game, Move* out_move);
 
+int handle_position_command(Game* game, const char* args);
 int run_uci_loop(FILE* in, FILE* out, FILE* err);
 int uci_clock_budget_ms(int remaining_ms, int increment_ms);
 

@@ -272,21 +272,31 @@ int test_uci_clock_budget_formula(void){
     return success;
 }
 
-/* A position command longer than the old 1024-character buffer must be applied in full. */
+/* A 600-full-move game (1200 plies) must be applied in full, checked by the resulting FEN. */
 int test_uci_long_position_command_is_fully_applied(void){
-    static char input[4096];
-    char move[16];
-    size_t length = (size_t)snprintf(input, sizeof(input), "position startpos moves");
+    static char args[8192];
+    char fen[128];
+    size_t length = (size_t)snprintf(args, sizeof(args), "startpos moves");
+    Game* game = create_game();
+    int success;
 
-    for(int i = 0; i < 100; i++){
-        length += (size_t)snprintf(input + length, sizeof(input) - length,
+    if(game == NULL){
+        return 0;
+    }
+
+    /* Each four-ply cycle returns to the start position. */
+    for(int i = 0; i < 300; i++){
+        length += (size_t)snprintf(args + length, sizeof(args) - length,
             " g1f3 g8f6 f3g1 f6g8");
     }
-    snprintf(input + length, sizeof(input) - length, " e2e4\ngo depth 2\nquit\n");
 
-    /* Black is to move, so the move must start from rank 7 or 8. */
-    return uci_bestmove(input, move, sizeof(move))
-        && (move[1] == '7' || move[1] == '8');
+    success = handle_position_command(game, args);
+    success = success && save_fen(game, fen, sizeof(fen));
+    success = success && strcmp(fen,
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 1200 601") == 0;
+
+    destroy_game(game);
+    return success;
 }
 
 int test_uci_oversized_line_is_ignored(void){
