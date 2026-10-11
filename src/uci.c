@@ -11,8 +11,6 @@
 #include "transposition_table.h"
 #include "move_gen.h"
 
-/* 8,850 moves = 17,700 plies at 5 bytes each ("e2e4 "), plus 1 byte per promotion (at most 16), plus a ~110-byte FEN prefix: at most 88,626 bytes. 96 KiB (98,304 bytes) leaves room. */
-#define UCI_LINE_MAX (96 * 1024)
 #define UCI_MIN_THINK_MS 200
 #define UCI_REMAINING_TIME_DIVISOR 40
 #define UCI_CLOCK_SAFETY_BUFFER_MS 200
