@@ -11,6 +11,7 @@
 #include "transposition_table.h"
 #include "move_gen.h"
 
+#define UCI_REFUSAL_MOVE "a1a1"
 #define UCI_MIN_THINK_MS 200
 #define UCI_REMAINING_TIME_DIVISOR 40
 #define UCI_CLOCK_SAFETY_BUFFER_MS 200
@@ -469,6 +470,7 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
     int stop = 0;
     int status = 0;
     int invalid_position = 0;
+    const char* invalid_reason = NULL;
 
     if(in == NULL || out == NULL || err == NULL){
         return 0;
@@ -549,6 +551,7 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
                 invalid_position = 0;
             } else {
                 invalid_position = 1;
+                invalid_reason = "invalid position command";
                 fprintf(err, "uci warning: invalid position command\n");
             }
             continue;
@@ -569,9 +572,13 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
             int reported_score = 0;
             int has_reported_score = 0;
 
-            if(go_params.alloc_failed){
-                fprintf(out, "info string unable to allocate go parameters\n");
-                fprintf(out, "bestmove 0000\n");
+            if(invalid_position || go_params.alloc_failed){
+                const char* reason = go_params.alloc_failed
+                    ? "unable to allocate go parameters"
+                    : invalid_reason;
+
+                fprintf(out, "info string %s\n", reason);
+                fprintf(out, "bestmove %s\n", UCI_REFUSAL_MOVE);
                 fflush(out);
                 continue;
             }

@@ -374,8 +374,25 @@ int test_uci_line_one_past_limit_is_ignored(void){
         && (move[1] == '1' || move[1] == '2');
 }
 
+int test_uci_illegal_position_refuses_search(void){
+    char move[16];
+
+    /* Second e2e4 is illegal for Black, so the position is invalid and go must refuse. */
+    return uci_bestmove("position startpos moves e2e4 e2e4\ngo depth 1\nquit\n",
+        move, sizeof(move)) && strcmp(move, "a1a1") == 0;
+}
+
+int test_uci_valid_position_after_refusal_searches(void){
+    char move[16];
+
+    return uci_bestmove("position startpos moves e2e4 e2e4\nposition startpos moves e2e4\ngo depth 1\nquit\n",
+        move, sizeof(move))
+        && strcmp(move, "a1a1") != 0
+        && (move[1] == '8' || move[1] == '7');
+}
+
 int uci_tests(void){
-    int (*test_cases[18])(void) = {
+    int (*test_cases[20])(void) = {
         test_move_to_uci_basic,
         test_move_to_uci_promotion,
         test_parse_uci_move_basic,
@@ -393,9 +410,11 @@ int uci_tests(void){
         test_uci_max_length_game_is_fully_applied,
         test_uci_line_at_limit_is_accepted,
         test_uci_line_one_past_limit_is_ignored,
-        test_uci_clock_budget_formula
+        test_uci_clock_budget_formula,
+        test_uci_illegal_position_refuses_search,
+        test_uci_valid_position_after_refusal_searches
     };
-    char* test_case_names[18] = {
+    char* test_case_names[20] = {
         "test_move_to_uci_basic",
         "test_move_to_uci_promotion",
         "test_parse_uci_move_basic",
@@ -413,8 +432,10 @@ int uci_tests(void){
         "test_uci_max_length_game_is_fully_applied",
         "test_uci_line_at_limit_is_accepted",
         "test_uci_line_one_past_limit_is_ignored",
-        "test_uci_clock_budget_formula"
+        "test_uci_clock_budget_formula",
+        "test_uci_illegal_position_refuses_search",
+        "test_uci_valid_position_after_refusal_searches"
     };
 
-    return run_tests(test_cases, test_case_names, 18);
+    return run_tests(test_cases, test_case_names, 20);
 }
