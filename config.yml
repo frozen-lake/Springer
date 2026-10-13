@@ -35,9 +35,9 @@ challenge:
   rated_block_list:
     - derge
   min_base: 60
-  max_base: 1800
+  max_base: 900
   min_increment: 0
-  max_increment: 20
+  max_increment: 10
   bullet_requires_increment: false
 
 matchmaking:
