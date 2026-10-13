@@ -20,5 +20,3 @@ __pycache__
 *.key
 *token*
 *secret*
-lichess_config.toml
-springer_lichess.py
