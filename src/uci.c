@@ -621,7 +621,8 @@ int run_uci_loop(FILE* in, FILE* out, FILE* err){
 
             if(movetime_ms > 0){
                 int max_depth = requested_max_depth;
-
+                
+                tt_new_generation(&tt);
                 set_search_time_limit(&search_state, movetime_ms);
 
                 for(int current_depth = 1; current_depth <= max_depth; current_depth++){
