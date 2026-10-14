@@ -40,6 +40,7 @@ static void draw_path_push(SearchState* search_state, uint64_t position_hash,
 static void draw_path_pop(SearchState* search_state);
 static int count_occurrences_in_search_context(SearchState* search_state, Game* game);
 static DrawReason get_search_draw_reason(SearchState* search_state, Game* game);
+static int find_repetition_draw_move(SearchState* search_state, Game* game, Move* draw_move);
 static int move_is_irreversible(Move move, const UndoInfo* undo, const BoardState* state_after);
 static int quiesce_internal(SearchState* search_state, Game* game, int alpha, int beta,
     int ply, int qply, int entered_from_move, int edge_irreversible);
@@ -173,6 +174,40 @@ static DrawReason get_search_draw_reason(SearchState* search_state, Game* game){
     }
 
     return DRAW_REASON_NONE;
+}
+
+/* Finds a move that completes a threefold repetition. Searches pseudo-legal moves to save time; if a position was reached in the game history, the side that moved is never in check, so the move must be legal. */
+static int find_repetition_draw_move(SearchState* search_state, Game* game, Move* draw_move){
+    MoveList moves;
+
+    /* The shortest possible threefold repetition occurs in 8 irreversible plies. */
+    if(game == NULL || game->state.halfmove_clock < 7){
+        return 0;
+    }
+
+    generate_all_moves(&moves, game, game->state.side_to_move);
+
+    for(int i = 0; i < moves.size; i++){
+        Move move = moves.moves[i];
+        UndoInfo undo;
+        int completes_repetition = 0;
+
+        make_move_on_state(&game->state, move, &undo);
+        if(!move_is_irreversible(move, &undo, &game->state)){
+            /* Two occurrences in the game history implies a threefold repetition, since the node we are looking at is not actually in the history. */
+            completes_repetition = count_occurrences_in_search_context(search_state, game) >= 2;
+        }
+        unmake_move_on_state(&game->state, move, &undo);
+
+        if(completes_repetition){
+            if(draw_move != NULL){
+                *draw_move = move;
+            }
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 Move search_best_move(Game* game, SearchState* search_state){
@@ -756,9 +791,24 @@ static int alpha_beta_internal(SearchState* search_state, Game* game, int alpha,
         int alpha_original = alpha;
         int beta_original = beta;
         Move tt_move = 0;
+        Move draw_move = 0;
+        int has_draw_move = 0;
         MoveList moves;
         TranspositionTableEntry* entry = NULL;
-        if(search_state != NULL && search_state->tt != NULL){
+
+        /* A TT entry may predate the moves that makes a repetition possible, so the cutoff would hide it.*/
+        has_draw_move = find_repetition_draw_move(search_state, game, &draw_move);
+        if(has_draw_move){
+            if(alpha < 0){
+                alpha = 0;
+            }
+            if(alpha >= beta){
+                result = 0;
+                done = 1;
+            }
+        }
+
+        if(!done && search_state != NULL && search_state->tt != NULL){
             search_state->tt_probes += 1;
             entry = table_get(search_state->tt, key);
         }
@@ -767,6 +817,9 @@ static int alpha_beta_internal(SearchState* search_state, Game* game, int alpha,
             tt_move = entry->best_move;
             if(entry->depth >= depth_remaining){
                 int score = score_from_tt(entry->score, ply);
+                if(has_draw_move && score < 0){
+                    score = 0;
+                }
                 if(entry->flag == TT_EXACT){
                     search_state->tt_exact_cutoffs += 1;
                     result = score;
@@ -808,6 +861,15 @@ static int alpha_beta_internal(SearchState* search_state, Game* game, int alpha,
         if(!done){
             int best = -INF;
             Move best_move = 0;
+            
+            if(has_draw_move){
+                best = 0;
+                best_move = draw_move;
+                if(search_state != NULL && ply >= 0 && ply < MAX_SEARCH_PLY){
+                    search_state->pv_table[ply][0] = draw_move;
+                    search_state->pv_lengths[ply] = 1;
+                }
+            }
 
             for(int i = 0; i < moves.size; i++){
                 Move move = moves.moves[i];
