@@ -12,17 +12,14 @@ static int in_bounds(int file, int rank){
 	return file >= 0 && file < 8 && rank >= 0 && rank < 8;
 }
 
-// Shared "one PST" base: center is good, edges/corners are bad.
-static int square_activity_score(int sq){
-	int file = sq & 7;
-	int rank = sq >> 3;
+static int distance_from_center(int sq){
+	int file = sq % 8;
+	int rank = sq / 8;
 
-	// Distance to nearest center file (3 or 4), and nearest center rank (3 or 4).
 	int df = (file < 4) ? (3 - file) : (file - 4);
 	int dr = (rank < 4) ? (3 - rank) : (rank - 4);
 
-	// Range roughly +6 (center) down to -6 (corners).
-	return 6 - 2 * (df + dr);
+	return (df + dr);
 }
 
 static int count_knight_mobility(const Board* board, int sq, int side){
@@ -54,7 +51,6 @@ static int count_one_step_slider_mobility(const Board* board, int sq, int side, 
 	uint64_t own = board->pieces[side];
 	int count = 0;
 
-	// Directions: bishop, rook, queen use subsets.
 	static const int dirs[8][2] = {
 		{ 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 },
 		{ 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }
@@ -88,13 +84,15 @@ static int count_one_step_slider_mobility(const Board* board, int sq, int side, 
 int evaluate(Game* game){
 	Board* board = &game->state;
 
-	const int PST_PAWN   = 2;
-	const int PST_KNIGHT = 3;
-	const int PST_BISHOP = 3;
-	const int PST_ROOK   = 2;
-	const int PST_QUEEN  = 1;
-	const int PST_KING   = 0;
+	// Multiplied with piece centralization score
+	const int CENTRAL_PAWN   = 2;
+	const int CENTRAL_KNIGHT = 3;
+	const int CENTRAL_BISHOP = 3;
+	const int CENTRAL_ROOK   = 2;
+	const int CENTRAL_QUEEN  = 1;
+	const int CENTRAL_KING   = 0;
 
+	// Multiplied with piece mobility score
 	const int MOB_KNIGHT = 3;
 	const int MOB_BISHOP = 3;
 	const int MOB_ROOK   = 2;
@@ -103,7 +101,7 @@ int evaluate(Game* game){
 	const int DOUBLED_PAWN_PENALTY = 12;
 
 	int material_score = 0;
-	int pst_raw_score = 0;
+	int centralization_score = 0;
 	int mobility_score = 0;
 
 	int white_pawns_on_file[8] = {0};
@@ -126,21 +124,20 @@ int evaluate(Game* game){
 		material_score += sign * PIECE_VALUES[piece];
 
 		int oriented_sq = (side == White) ? sq : (sq ^ 56);
-		int base = square_activity_score(oriented_sq);
+		int base = 6 - (2 * distance_from_center(oriented_sq));
 
-		int piece_pst_scale = 0;
+		int piece_central_scale = 0;
 		switch(piece){
-			case Pawn:   piece_pst_scale = PST_PAWN; break;
-			case Knight: piece_pst_scale = PST_KNIGHT; break;
-			case Bishop: piece_pst_scale = PST_BISHOP; break;
-			case Rook:   piece_pst_scale = PST_ROOK; break;
-			case Queen:  piece_pst_scale = PST_QUEEN; break;
-			case King:   piece_pst_scale = PST_KING; break;
+			case Pawn:   piece_central_scale = CENTRAL_PAWN; break;
+			case Knight: piece_central_scale = CENTRAL_KNIGHT; break;
+			case Bishop: piece_central_scale = CENTRAL_BISHOP; break;
+			case Rook:   piece_central_scale = CENTRAL_ROOK; break;
+			case Queen:  piece_central_scale = CENTRAL_QUEEN; break;
+			case King:   piece_central_scale = CENTRAL_KING; break;
 			default: break;
 		}
-		pst_raw_score += sign * (base * piece_pst_scale);
+		centralization_score += sign * (base * piece_central_scale);
 
-		// Mobility
 		if(piece == Knight){
 			mobility_score += sign * (MOB_KNIGHT * count_knight_mobility(board, sq, side));
 		} else if(piece == Bishop){
@@ -151,7 +148,6 @@ int evaluate(Game* game){
 			mobility_score += sign * (MOB_QUEEN * count_one_step_slider_mobility(board, sq, side, Queen));
 		}
 
-		// Doubled pawns
 		if(piece == Pawn){
 			int file = sq & 7;
 			if(side == White){
@@ -173,13 +169,12 @@ int evaluate(Game* game){
 		}
 	}
 
-	// PST fades out linearly by ply 80 (40 full moves).
+	// Centralization fades out linearly by ply 80 (40 full moves).
 	int fade_ply = clamp_int(game->game_ply, 0, 80);
-	int pst_weight_num = 80 - fade_ply;
-	int pst_score = (pst_raw_score * pst_weight_num) / 80;
+	int centralization_weight_num = 80 - fade_ply;
+	int faded_centralization_score = (centralization_score * centralization_weight_num) / 80;
 
-	int score_white_pov = material_score + pst_score + mobility_score + doubled_pawn_score;
+	int score_white_pov = material_score + faded_centralization_score + mobility_score + doubled_pawn_score;
 
-	// Keep your existing convention: score from side to move POV.
 	return (game->state.side_to_move == White) ? score_white_pov : -score_white_pov;
 }
