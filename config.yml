@@ -41,4 +41,12 @@ challenge:
   bullet_requires_increment: false
 
 matchmaking:
-  allow_matchmaking: false
+  allow_matchmaking: true
+  challenge_mode: "casual"
+  challenge_variant: "standard"
+  opponent_min_rating: 1300
+  opponent_max_rating: 1800
+  challenge_initial_time: [60, 120, 180]
+  challenge_increment: [0, 1]
+  challenge_timeout: 2
+  challenge_filter: "coarse"
