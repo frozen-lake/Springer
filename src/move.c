@@ -437,11 +437,15 @@ int parse_algebraic_move(char* input, Game* game) {
 
     if(input[0] == 'O' || input[0] == 'o'){
         uint64_t king = board->pieces[King] & game->state.pieces[game->state.side_to_move];
-        int king_pos = get_lsb_index(king);
-        if(strncmp(input, "O-O-O", 5) == 0 || strncmp(input, "o-o-o", 5) == 0){
-            return king_pos | ((king_pos-2) << 6) | (King << 12) | (Queenside << 21);
-        } else if(strncmp(input, "O-O", 3) == 0 || strncmp(input, "o-o", 3) == 0){
-            return king_pos | ((king_pos+2) << 6) | (King << 12) | (Kingside << 21);
+        if(king){
+            int king_pos = get_lsb_index(king);
+            if(strncmp(input, "O-O-O", 5) == 0 || strncmp(input, "o-o-o", 5) == 0){
+                return king_pos | ((king_pos-2) << 6) | (King << 12) | (Queenside << 21);
+            } else if(strncmp(input, "O-O", 3) == 0 || strncmp(input, "o-o", 3) == 0){
+                return king_pos | ((king_pos+2) << 6) | (King << 12) | (Kingside << 21);
+            }
+        } else {
+            return -1;
         }
     }
 

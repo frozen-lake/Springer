@@ -175,6 +175,7 @@ int test_is_legal_move(){
 	int illegal = is_legal_move(game, (E8 | (D7 << 6) | (King << 12)));
 	int legal = is_legal_move(game, (E8 | (F7 << 6) | (King << 12)));
 
+	destroy_game(game);
 	return legal && !illegal;
 }
 

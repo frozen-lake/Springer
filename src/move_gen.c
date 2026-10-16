@@ -143,6 +143,10 @@ void generate_king_moves(MoveList* move_list, Game* game, int color){
     Board* board = &game->state;
     uint64_t king = board->pieces[King] & board->pieces[color];
 
+    if(king == 0){
+        return;
+    }
+    
     int king_pos = get_lsb_index(king);
     uint64_t attack = get_king_attacks(king_pos);
     generate_moves_from_bitboard(king_pos, attack, move_list, game, color);
