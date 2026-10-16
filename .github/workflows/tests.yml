@@ -13,3 +13,12 @@ jobs:
       run: make tests
     - name: Run tests
       run: ./springer_tests
+
+  sanitize:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build and run tests with ASan and UBSan
+      run: make tests-sanitize
+    - name: Run sanitized tests
+      run: ./springer_tests_sanitize
