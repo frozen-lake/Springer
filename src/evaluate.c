@@ -1,7 +1,7 @@
 #include "evaluate.h"
 
 static int PIECE_VALUES[8] = {0, 0, 100, 300, 300, 500, 900, 10000};
-static const int PASSED_PAWN_BONUS[8] = {0, 5, 10, 20, 35, 60, 100, 0}; /* indexed by relative rank */
+static const int PASSED_PAWN_BONUS[8] = {0, 5, 10, 20, 35, 80, 140, 0}; /* indexed by relative rank */
 
 static int clamp_int(int x, int lo, int hi){
 	if(x < lo) return lo;
@@ -27,8 +27,8 @@ static int count_knight_mobility(const Board* board, int sq, int side){
 	static const int dfile[8] = { 1, 2, 2, 1, -1, -2, -2, -1 };
 	static const int drank[8] = { 2, 1, -1, -2, -2, -1, 1, 2 };
 
-	int file = sq & 7;
-	int rank = sq >> 3;
+	int file = sq % 8;
+	int rank = sq / 8;
 	uint64_t own = board->pieces[side];
 	int count = 0;
 
@@ -47,8 +47,8 @@ static int count_knight_mobility(const Board* board, int sq, int side){
 }
 
 static int count_one_step_slider_mobility(const Board* board, int sq, int side, int piece){
-	int file = sq & 7;
-	int rank = sq >> 3;
+	int file = sq % 8;
+	int rank = sq / 8;
 	uint64_t own = board->pieces[side];
 	int count = 0;
 
@@ -83,8 +83,8 @@ static int count_one_step_slider_mobility(const Board* board, int sq, int side, 
 }
 
 static int passed_pawn_bonus(const Board* board, int sq, int side){
-	int file = sq & 7;
-	int rank = sq >> 3;
+	int file = sq % 8;
+	int rank = sq / 8;
 	int enemy = !side;
 	int step = (side == White) ? 1 : -1;
 	uint64_t enemy_pawns = board->pieces[Pawn] & board->pieces[enemy];
@@ -101,7 +101,14 @@ static int passed_pawn_bonus(const Board* board, int sq, int side){
 	}
 
 	int relative_rank = (side == White) ? rank : 7 - rank;
-	return PASSED_PAWN_BONUS[relative_rank];
+	int bonus = PASSED_PAWN_BONUS[relative_rank];
+
+	uint64_t occupied = board->pieces[White] | board->pieces[Black];
+	int front_sq = sq + 8 * step;
+	if(occupied & U64_MASK(front_sq)){
+		bonus /= 2;
+	}
+	return bonus;
 }
 
 int evaluate(Game* game){
@@ -124,6 +131,7 @@ int evaluate(Game* game){
 	const int DOUBLED_PAWN_PENALTY = 12;
 
 	int material_score = 0;
+	int non_pawn_material = 0;
 	int centralization_score = 0;
 	int passed_pawn_score = 0;
 	int mobility_score = 0;
@@ -146,6 +154,9 @@ int evaluate(Game* game){
 		int sign = (side == White) ? 1 : -1;
 
 		material_score += sign * PIECE_VALUES[piece];
+		if(piece != Pawn && piece != King){
+			non_pawn_material += PIECE_VALUES[piece];
+		}
 
 		int oriented_sq = (side == White) ? sq : (sq ^ 56);
 		int base = 6 - (2 * distance_from_center(oriented_sq));
@@ -194,13 +205,11 @@ int evaluate(Game* game){
 		}
 	}
 
-	// Centralization fades out linearly by ply 80 (40 full moves).
-	int fade_ply = clamp_int(game->game_ply, 0, 80);
-	int centralization_weight_num = 80 - fade_ply;
-	int faded_centralization_score = (centralization_score * centralization_weight_num) / 80;
+	int game_phase = clamp_int(non_pawn_material * 100 / 6200, 0, 100); // 100 is opening, 0 is endgame
+	centralization_score = (centralization_score * game_phase) / 100;
+	passed_pawn_score = (passed_pawn_score * (100 - game_phase)) / 100;
 
-	int score_white_pov = material_score + faded_centralization_score + mobility_score
-		+ doubled_pawn_score + passed_pawn_score;
+	int score_white_pov = material_score + centralization_score + mobility_score + doubled_pawn_score + passed_pawn_score;
 
 	return (game->state.side_to_move == White) ? score_white_pov : -score_white_pov;
 }
