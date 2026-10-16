@@ -1,6 +1,7 @@
 #include "evaluate.h"
 
 static int PIECE_VALUES[8] = {0, 0, 100, 300, 300, 500, 900, 10000};
+static const int PASSED_PAWN_BONUS[8] = {0, 5, 10, 20, 35, 60, 100, 0}; /* indexed by relative rank */
 
 static int clamp_int(int x, int lo, int hi){
 	if(x < lo) return lo;
@@ -81,13 +82,35 @@ static int count_one_step_slider_mobility(const Board* board, int sq, int side, 
 	return count;
 }
 
+static int passed_pawn_bonus(const Board* board, int sq, int side){
+	int file = sq & 7;
+	int rank = sq >> 3;
+	int enemy = !side;
+	int step = (side == White) ? 1 : -1;
+	uint64_t enemy_pawns = board->pieces[Pawn] & board->pieces[enemy];
+
+	for(int f = file - 1; f <= file + 1; f++){
+		if(f < 0 || f > 7){
+			continue;
+		}
+		for(int r = rank + step; r >= 0 && r < 8; r += step){
+			if(enemy_pawns & U64_MASK((r << 3) | f)){
+				return 0;
+			}
+		}
+	}
+
+	int relative_rank = (side == White) ? rank : 7 - rank;
+	return PASSED_PAWN_BONUS[relative_rank];
+}
+
 int evaluate(Game* game){
 	Board* board = &game->state;
 
 	// Multiplied with piece centralization score
 	const int CENTRAL_PAWN   = 2;
-	const int CENTRAL_KNIGHT = 3;
-	const int CENTRAL_BISHOP = 3;
+	const int CENTRAL_KNIGHT = 2;
+	const int CENTRAL_BISHOP = 2;
 	const int CENTRAL_ROOK   = 2;
 	const int CENTRAL_QUEEN  = 1;
 	const int CENTRAL_KING   = 0;
@@ -102,6 +125,7 @@ int evaluate(Game* game){
 
 	int material_score = 0;
 	int centralization_score = 0;
+	int passed_pawn_score = 0;
 	int mobility_score = 0;
 
 	int white_pawns_on_file[8] = {0};
@@ -149,6 +173,7 @@ int evaluate(Game* game){
 		}
 
 		if(piece == Pawn){
+			passed_pawn_score += sign * passed_pawn_bonus(board, sq, side);
 			int file = sq & 7;
 			if(side == White){
 				white_pawns_on_file[file]++;
@@ -158,7 +183,7 @@ int evaluate(Game* game){
 		}
 	}
 
-	// Basic doubled pawn penalties.
+	// Basic doubled pawn penalties
 	int doubled_pawn_score = 0;
 	for(int f = 0; f < 8; f++){
 		if(white_pawns_on_file[f] > 1){
@@ -174,7 +199,8 @@ int evaluate(Game* game){
 	int centralization_weight_num = 80 - fade_ply;
 	int faded_centralization_score = (centralization_score * centralization_weight_num) / 80;
 
-	int score_white_pov = material_score + faded_centralization_score + mobility_score + doubled_pawn_score;
+	int score_white_pov = material_score + faded_centralization_score + mobility_score
+		+ doubled_pawn_score + passed_pawn_score;
 
 	return (game->state.side_to_move == White) ? score_white_pov : -score_white_pov;
 }
