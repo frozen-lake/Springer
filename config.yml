@@ -46,7 +46,7 @@ matchmaking:
   challenge_variant: "standard"
   opponent_min_rating: 1400
   opponent_max_rating: 1900
-  challenge_initial_time: [60, 120, 180]
-  challenge_increment: [0, 1]
-  challenge_timeout: 3
+  challenge_initial_time: [180]
+  challenge_increment: [0, 2]
+  challenge_timeout: 2
   challenge_filter: "coarse"
