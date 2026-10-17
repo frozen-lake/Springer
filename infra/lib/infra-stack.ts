@@ -73,8 +73,9 @@ class BotConstruct extends Construct {
       'snap install aws-cli --classic',
       'export PATH="$PATH:/snap/bin"',
       `git clone ${REPO_URL} /srv/springer`,
-      'cd /srv/springer',
-      'bash run-aws.sh',
+      'cp /srv/springer/deploy/springer-deploy.service /srv/springer/deploy/springer-deploy.timer /etc/systemd/system/',
+      'systemctl daemon-reload',
+      'systemctl enable --now springer-deploy.timer',
     );
 
     const launchTemplate = new ec2.LaunchTemplate(this, 'BotLaunchTemplate', {

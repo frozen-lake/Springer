@@ -1,0 +1,9 @@
+[Unit]
+Description=Periodically check for a new Springer commit
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=1min
+
+[Install]
+WantedBy=timers.target
