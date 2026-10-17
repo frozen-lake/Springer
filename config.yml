@@ -18,7 +18,9 @@ move_overhead: 1000
 quit_after_all_games_finish: true
 
 challenge:
-  concurrency: 1
+  concurrency: 2
+  games_reserved_for_humans: 1
+  preference: "human"
   accept_bot: true
   only_bot: false
   variants:
@@ -29,9 +31,6 @@ challenge:
     - rapid
   modes:
     - casual
-  # Springer-specific (enforced by extra_game_handlers.py): rated challenges from these
-  # users are declined, casual ones are still accepted. List the owner's own accounts
-  # here so they can never play rated games against the bot (boosting).
   rated_block_list:
     - derge
   min_base: 60
@@ -42,10 +41,10 @@ challenge:
 
 matchmaking:
   allow_matchmaking: true
-  challenge_mode: "casual"
+  allow_during_games: true
+  challenge_mode: "rated"
   challenge_variant: "standard"
-  opponent_min_rating: 1600
-  opponent_max_rating: 2100
+  opponent_rating_difference: 200
   challenge_initial_time: [180]
   challenge_increment: [0, 2]
   challenge_timeout: 2
