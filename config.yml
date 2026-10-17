@@ -41,7 +41,7 @@ challenge:
   bullet_requires_increment: false
 
 matchmaking:
-  allow_matchmaking: false
+  allow_matchmaking: true
   challenge_mode: "casual"
   challenge_variant: "standard"
   opponent_min_rating: 1600
