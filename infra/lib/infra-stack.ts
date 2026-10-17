@@ -8,10 +8,17 @@ import { Construct } from 'constructs';
 
 const INSTANCE_COUNT = 1;
 
-const REPO_URL = 'https://github.com/frozen-lake/Springer.git';
+const REPO = 'frozen-lake/Springer';
+const REPO_URL = `https://github.com/${REPO}.git`;
+const REPO_SUBJECT_PREFIX = 'repo:frozen-lake@108189602/Springer@839077294';
+const DEPLOY_BRANCH = 'main';
+const DEPLOY_DOCUMENT_NAME = 'springer-deploy';
+const BOT_TAG_KEY = 'springer-role';
+const BOT_TAG_VALUE = 'bot';
 const TOKEN_PARAMETER = '/springer/lichess-bot-token';
 const LOG_GROUP = '/springer/lichess-bot';
 const UBUNTU_AMI_PARAMETER = '/aws/service/canonical/ubuntu/server/26.04/stable/current/arm64/hvm/ebs-gp3/ami-id';
+const DEPLOY_TIMEOUT_SECONDS = 5400; // 90 min
 
 class NetworkConstruct extends Construct {
   readonly vpc: ec2.Vpc;
@@ -95,12 +102,81 @@ class BotConstruct extends Construct {
       }],
     });
 
-    new autoscaling.AutoScalingGroup(this, 'BotGroup', {
+    const group = new autoscaling.AutoScalingGroup(this, 'BotGroup', {
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       launchTemplate,
       minCapacity: props.instanceCount,
       maxCapacity: props.instanceCount,
+    });
+    cdk.Tags.of(group).add(BOT_TAG_KEY, BOT_TAG_VALUE, { applyToLaunchedInstances: true });
+  }
+}
+
+class DeployConstruct extends Construct {
+  constructor(scope: Construct, id: string) {
+    super(scope, id);
+
+    const github = new iam.OidcProviderNative(this, 'GitHubOidc', {
+      url: 'https://token.actions.githubusercontent.com',
+      clientIds: ['sts.amazonaws.com'],
+    });
+
+    const deployRole = new iam.Role(this, 'DeployRole', {
+      description: 'Assumed by GitHub Actions on the deploy branch to run the bot deploy document',
+      maxSessionDuration: cdk.Duration.hours(2),
+      assumedBy: new iam.WebIdentityPrincipal(github.oidcProviderArn, {
+        StringEquals: {
+          'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+          'token.actions.githubusercontent.com:sub': `${REPO_SUBJECT_PREFIX}:ref:refs/heads/${DEPLOY_BRANCH}`,
+        },
+      }),
+    });
+
+    new ssm.CfnDocument(this, 'DeployDocument', {
+      name: DEPLOY_DOCUMENT_NAME,
+      documentType: 'Command',
+      content: {
+        schemaVersion: '2.2',
+        description: 'Pull the latest Springer and restart the bot. Waits for games in progress to finish.',
+        mainSteps: [{
+          action: 'aws:runShellScript',
+          name: 'deploy',
+          timeoutSeconds: DEPLOY_TIMEOUT_SECONDS,
+          inputs: {
+            runCommand: [
+              'export PATH="$PATH:/snap/bin"', // Needed because run-aws.sh uses the AWS cli
+              'cd /srv/springer && git pull --ff-only && bash run-aws.sh',
+            ],
+          },
+        }],
+      },
+    });
+
+    deployRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'SendDeployDocument',
+      actions: ['ssm:SendCommand'],
+      resources: [`arn:${cdk.Aws.PARTITION}:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:document/${DEPLOY_DOCUMENT_NAME}`],
+    }));
+
+    deployRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'SendToBotInstances',
+      actions: ['ssm:SendCommand'],
+      resources: [`arn:${cdk.Aws.PARTITION}:ec2:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:instance/*`],
+      conditions: {
+        StringEquals: { [`ssm:resourceTag/${BOT_TAG_KEY}`]: [BOT_TAG_VALUE] },
+      },
+    }));
+
+    deployRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ReadCommandResults',
+      actions: ['ssm:GetCommandInvocation'],
+      resources: ['*'],
+    }));
+
+    new cdk.CfnOutput(this, 'DeployRoleArn', {
+      value: deployRole.roleArn,
+      description: 'Set as the AWS_DEPLOY_ROLE_ARN repository variable in GitHub',
     });
   }
 }
@@ -115,5 +191,6 @@ export class InfraStack extends cdk.Stack {
       securityGroup: network.securityGroup,
       instanceCount: INSTANCE_COUNT,
     });
+    new DeployConstruct(this, 'Deploy');
   }
 }
