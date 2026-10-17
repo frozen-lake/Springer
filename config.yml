@@ -42,10 +42,10 @@ challenge:
 
 matchmaking:
   allow_matchmaking: true
-  challenge_mode: "rated"
+  challenge_mode: "casual"
   challenge_variant: "standard"
-  opponent_min_rating: 1400
-  opponent_max_rating: 1900
+  opponent_min_rating: 1600
+  opponent_max_rating: 2100
   challenge_initial_time: [180]
   challenge_increment: [0, 2]
   challenge_timeout: 2
