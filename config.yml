@@ -47,5 +47,5 @@ matchmaking:
   opponent_rating_difference: 200
   challenge_initial_time: [180]
   challenge_increment: [0, 2]
-  challenge_timeout: 2
+  challenge_timeout: 15
   challenge_filter: "coarse"
